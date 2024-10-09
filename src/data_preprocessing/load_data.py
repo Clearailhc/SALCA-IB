@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from openai import OpenAI
 from datetime import datetime
+from time_series_sample import TimeSeriesSample
 
 # 在文件开头添加这行代码
 client = OpenAI(
@@ -22,39 +23,14 @@ def load_data(data_path):
         data_path (str): 数据文件路径。
 
     Returns:
-        pd.DataFrame: 加载的数据集。
+        list of TimeSeriesSample: 加载的数据集。
     """
-    # 尝试直接读取CSV文件，不指定数据类型
-    try:
-        data = pd.read_csv(data_path)
-    except Exception as e:
-        print(f"读取CSV文件时出错: {e}")
-        return None
-
-    # 检查必要的列是否存在
-    required_columns = ['timestamp', 'label']
-    if not all(col in data.columns for col in required_columns):
-        print("CSV文件缺少必要的列（timestamp 和 label）")
-        return None
-
-    # 尝试将timestamp和label列转换为适当的类型
-    try:
-        # 将timestamp转换datetime对象
-        data['timestamp'] = pd.to_datetime(data['timestamp'].astype(int), unit='s')
-        data['label'] = data['label'].astype(int)
-    except Exception as e:
-        print(f"转换timestamp或label列时出错: {e}")
-        return None
-
-    # 将其他列转换为float类型
-    for col in data.columns:
-        if col not in required_columns:
-            try:
-                data[col] = data[col].astype(float)
-            except Exception as e:
-                print(f"将列 {col} 转换为float类型时出错: {e}")
-
-    return data
+    samples = []
+    with open(data_path, 'r') as f:
+        for line in f:
+            sample = TimeSeriesSample.from_json(line.strip())
+            samples.append(sample)
+    return samples
 
 def preprocess_data(data):
     """
@@ -126,32 +102,39 @@ def select_training_data_traditional_timestamp(data, start_time, end_time, train
 
     return X_train, X_test, y_train, y_test
 
-def select_training_data_with_llm_timestamp(data, feature_names, memory):
+def select_training_data_with_llm_timestamp(samples, memory):
     """
     利用LLM进行自动训练数据选择基于时间戳，并参考记忆系统。
 
     Args:
-        data (pd.DataFrame): 原始数据集，包含 'timestamp' 和 'label' 列。
-        feature_names (list): 原始特征名称列表。
+        samples (list of TimeSeriesSample): 原始数据样本列表。
         memory (dict): 记忆系统，包括 'long_term_memory' 和 'short_term_memory'。
 
     Returns:
-        np.ndarray, np.ndarray, np.ndarray, np.ndarray: 训练集特征、测试集特征、训练集标签、测试集标签。
+        list, list: 训练集样本列表和测试集样本列表。
     """
-    # 构建提示信，包含长期记忆中的模式和短期记忆中的反馈
+    # 构建提示信息，包含长期记忆中的模式和短期记忆中的反馈
     historical_patterns = memory.get('long_term_memory', {}).get('historical_patterns', [])
     recent_feedback = memory.get('short_term_memory', {}).get('recent_feedback', [])
 
+    # 获取数据的时间范围
+    all_timestamps = [sample.timestamp[0] for sample in samples] + [sample.timestamp[-1] for sample in samples]
+    min_time = min(all_timestamps)
+    max_time = max(all_timestamps)
+
     # 添加数据分布信息
-    label_distribution = data['label'].value_counts(normalize=True).to_dict()
+    label_distribution = {0: 0, 1: 0}
+    for sample in samples:
+        label_distribution[sample.label] += 1
+    total_samples = len(samples)
+    label_distribution = {k: v / total_samples for k, v in label_distribution.items()}
     data_distribution_info = f"标签分布: {json.dumps(label_distribution, ensure_ascii=False)}"
 
     prompt = f"""
     我有一个数据集用于网络故障预测，包含以下特征：
-    {', '.join(feature_names)}
+    {', '.join(samples[0].feature_names)}
     
-    数据集包含一个时间戳列 'timestamp' 和标签列 'label'。
-    数据的时间范围是从 2024年6月20日 到 2024年8月23日。
+    数据的时间范围是从 {min_time} 到 {max_time}。
 
     历史模式：
     {json.dumps(historical_patterns, ensure_ascii=False)}
@@ -168,8 +151,8 @@ def select_training_data_with_llm_timestamp(data, feature_names, memory):
     请严格按以下格式返回你的选择和解释：
 
     选择的时间段:
-    - 开始时间: YYYY-MM-DD
-    - 结束时间: YYYY-MM-DD
+    - 开始时间: YYYY-MM-DD HH:MM:SS
+    - 结束时间: YYYY-MM-DD HH:MM:SS
 
     训练集比例: 0.X
 
@@ -179,6 +162,10 @@ def select_training_data_with_llm_timestamp(data, feature_names, memory):
 
     # 调用 LLM 获取建议
     try:
+        client = OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY", "infra-ppt-creativity"),
+            base_url=os.getenv("LLM_API_BASE_URL", "https://api.lingyiwanwu.com/v1")
+        )
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -189,7 +176,7 @@ def select_training_data_with_llm_timestamp(data, feature_names, memory):
         )
     except Exception as e:
         print(f"调用LLM时出错: {e}")
-        return None, None, None, None
+        return None, None
 
     # 解析 LLM 响应
     llm_output = response.choices[0].message.content
@@ -197,42 +184,42 @@ def select_training_data_with_llm_timestamp(data, feature_names, memory):
 
     if time_period is None or train_ratio is None:
         print("LLM未能返回有效的数据选择结果，使用默认方法进行选择。")
-        start_time = data['timestamp'].min()
-        end_time = data['timestamp'].max()
-        
-        # 根据标签分布动态调整训练集比例
-        minority_class_ratio = data['label'].value_counts(normalize=True).min()
-        train_ratio = max(0.8, 1 - 2 * minority_class_ratio)  # 确保少数类在测试集中至少有两个样本
+        start_time = min(sample.timestamp[0] for sample in samples)
+        end_time = max(sample.timestamp[-1] for sample in samples)
+        train_ratio = 0.8
     else:
-        start_time = time_period['开始时间']
-        end_time = time_period['结束时间']
+        start_time = int(pd.to_datetime(time_period['开始时间']).timestamp())
+        end_time = int(pd.to_datetime(time_period['结束时间']).timestamp())
 
-    # 使用传统方法基于LLM选择的时间段和比例进行数据划分
-    X_train, X_test, y_train, y_test = select_training_data_traditional_timestamp(
-        data,
-        start_time=start_time,
-        end_time=end_time,
-        train_ratio=train_ratio
-    )
+    # 根据选择的时间段筛选样本
+    selected_samples = [
+        sample for sample in samples
+        if start_time <= sample.timestamp[0] <= end_time
+    ]
+
+    # 随机划分训练集和测试集
+    train_samples, test_samples = train_test_split(selected_samples, train_size=train_ratio, random_state=42)
 
     # 更新短期记忆
     memory['short_term_memory']['recent_training_selection'] = {
-        'time_period': time_period,
+        'time_period': {
+            '开始时间': datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S'),
+            '结束时间': datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
+        },
         'train_ratio': train_ratio
     }
     memory['short_term_memory']['recent_feedback'].append(explanation)
 
-    print(f"选择的时间段: {start_time} 到 {end_time}")
+    print(f"选择的时间段: {datetime.fromtimestamp(start_time)} 到 {datetime.fromtimestamp(end_time)}")
     print(f"训练集比例: {train_ratio}")
     print(f"解释：{explanation}")
 
     # 打印总样本数、训练集样本数和测试集样本数
-    total_samples = len(X_train) + len(X_test)
-    print(f"总样本数: {total_samples}")
-    print(f"训练集样本数: {len(X_train)}")
-    print(f"测试集样本数: {len(X_test)}")
+    print(f"总样本数: {len(selected_samples)}")
+    print(f"训练集样本数: {len(train_samples)}")
+    print(f"测试集样本数: {len(test_samples)}")
 
-    return X_train, X_test, y_train, y_test
+    return train_samples, test_samples
 
 def parse_llm_output_training_timestamp(llm_output):
     """
@@ -254,9 +241,9 @@ def parse_llm_output_training_timestamp(llm_output):
     for line in lines:
         line = line.strip()
         if '开始时间:' in line:
-            time_period['开始时间'] = line.split(':')[-1].strip()
+            time_period['开始时间'] = line.split('开始时间:')[-1].strip()
         elif '结束时间:' in line:
-            time_period['结束时间'] = line.split(':')[-1].strip()
+            time_period['结束时间'] = line.split('结束时间:')[-1].strip()
         elif '训练集比例:' in line:
             try:
                 train_ratio = float(line.split(':')[-1].strip())
@@ -301,22 +288,25 @@ def select_training_data_traditional(X, y, method='f_regression', k=10):
     selected_features = selector.get_support(indices=True)
     return X_new, selected_features, selector
 
-def save_selected_training_data(X_train, X_test, y_train, y_test, output_dir):
+def save_selected_training_data(train_samples, test_samples, output_dir):
     """
     保存选择后的训练和测试数据。
 
     Args:
-        X_train (np.ndarray): 训练集特征。
-        X_test (np.ndarray): 测试集特征。
-        y_train (np.ndarray): 训练集标签。
-        y_test (np.ndarray): 测试集标签。
+        train_samples (list of TimeSeriesSample): 训练集样本。
+        test_samples (list of TimeSeriesSample): 测试集样本。
         output_dir (str): 输出目录路径。
     """
     os.makedirs(output_dir, exist_ok=True)
-    np.save(os.path.join(output_dir, 'X_train.npy'), X_train)
-    np.save(os.path.join(output_dir, 'X_test.npy'), X_test)
-    np.save(os.path.join(output_dir, 'y_train.npy'), y_train)
-    np.save(os.path.join(output_dir, 'y_test.npy'), y_test)
+    
+    with open(os.path.join(output_dir, 'train_samples.jsonl'), 'w') as f:
+        for sample in train_samples:
+            f.write(sample.to_json() + '\n')
+    
+    with open(os.path.join(output_dir, 'test_samples.jsonl'), 'w') as f:
+        for sample in test_samples:
+            f.write(sample.to_json() + '\n')
+    
     print(f"训练测试数据已保存至 {output_dir}")
 
 def select_and_save_training_data(memory=None):
@@ -329,40 +319,25 @@ def select_and_save_training_data(memory=None):
     Raises:
         ValueError: 当使用 LLM 选择训练时间但 memory 为空时抛出。
     """
-    data_path = "./data/raw/processed/selected_features.csv"  # 数据文件路径
+    data_path = "./data/raw/processed/selected_features.jsonl"  # 数据文件路径
     output_dir = "./data/raw/processed/training_data/"
 
     print("加载数据...")
-    data = load_data(data_path)
+    samples = load_data(data_path)
 
-    print("预处理数据...")
-    feature_names = data.drop(['timestamp', 'label'], axis=1).columns.tolist()
+    # 选择训练数据的方法：'llm_time'
+    selection_method = 'llm_time'
 
-    # 选择训练数据的方法：'traditional_time', 'llm_time'
-    selection_method = 'llm_time'  # 可以根据需要切换
-
-    if selection_method == 'traditional_time':
-        print("使用传统方法基于时间戳选择训练和测试数据...")
-        # 用户需要指定时间段和训练集比例
-        start_time = '2024-06-20'
-        end_time = '2024-08-23'
-        train_ratio = 0.8
-        X_train, X_test, y_train, y_test = select_training_data_traditional_timestamp(
-            data,
-            start_time=start_time,
-            end_time=end_time,
-            train_ratio=train_ratio
-        )
-    elif selection_method == 'llm_time':
+    if selection_method == 'llm_time':
         print("使用LLM自动选择训练和测试数据的时间段和比例...")
         if memory is None:
             raise ValueError("使用 LLM 选择训练时间时，memory 参数不能为空。")
-        X_train, X_test, y_train, y_test = select_training_data_with_llm_timestamp(data, feature_names, memory)
+        train_samples, test_samples = select_training_data_with_llm_timestamp(samples, memory)
     else:
         raise ValueError("不支持的数据选择方法。")
 
     print("保存选择后的训练和测试数据...")
-    save_selected_training_data(X_train, X_test, y_train, y_test, output_dir)
+    save_selected_training_data(train_samples, test_samples, output_dir)
 
     print("训练数据选择完成。")
 
@@ -431,7 +406,7 @@ if __name__ == "__main__":
                 'train_ratio': 0.8
             },
             'recent_feedback': [
-                '选择7月至8月中旬的数据作为训练集，以捕捉夏季高温和雷雨季节的特征。',
+                '选择7月至8月中旬的数据作为训练集，以捕捉夏季高温和雷雨季节的特��。',
                 '保留0.2的数据作为测试集，用于评估模型在最近一周数据上的表现。',
                 '考虑增加对设备维护后性能波动的关注，可能需要更细粒度的时间划分。'
             ]
