@@ -1,12 +1,16 @@
 import os
 import pandas as pd
+import numpy as np
 from sklearn.feature_selection import SelectKBest, f_regression, mutual_info_regression
 from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
 import joblib
 import openai
 import json
 import time
-import numpy as np
+from datetime import datetime, timedelta
+from scipy import stats
+from time_series_sample import TimeSeriesSample
 
 # 配置 OpenAI API 密钥和基础URL
 openai.api_key = os.getenv("OPENAI_API_KEY", "infra-ppt-creativity")
@@ -14,112 +18,163 @@ openai.api_base = os.getenv("LLM_API_BASE_URL", "https://api.lingyiwanwu.com/v1"
 
 def load_processed_data(pos_data_dir, neg_data_dir):
     """
-    加载处理后的正负样本数据。
+    加载处理后的正负样本数据。每个文件被视为一个完整的样本。
 
     Args:
         pos_data_dir (str): 正样本目录路径。
         neg_data_dir (str): 负样本目录路径。
 
     Returns:
-        pd.DataFrame: 合并后的数据集。
+        list of TimeSeriesSample: 包含所有样本数据的列表。
     """
-    pos_files = [os.path.join(pos_data_dir, f) for f in os.listdir(pos_data_dir) if f.endswith('.csv')]
-    neg_files = [os.path.join(neg_data_dir, f) for f in os.listdir(neg_data_dir) if f.endswith('.csv')]
+    def load_samples_from_dir(directory, label):
+        samples = []
+        for filename in os.listdir(directory):
+            if filename.endswith('.csv'):
+                file_path = os.path.join(directory, filename)
+                df = pd.read_csv(file_path)
+                samples.append(TimeSeriesSample.from_dataframe(df, label))
+        return samples
 
-    pos_data = pd.concat([pd.read_csv(f) for f in pos_files], ignore_index=True)
-    neg_data = pd.concat([pd.read_csv(f) for f in neg_files], ignore_index=True)
+    pos_samples = load_samples_from_dir(pos_data_dir, label=1)
+    neg_samples = load_samples_from_dir(neg_data_dir, label=0)
 
-    pos_data['label'] = 1
-    neg_data['label'] = 0
+    print(f"加载了 {len(pos_samples)} 个正样本")
+    print(f"加载了 {len(neg_samples)} 个负样本")
+    print(f"总样本数: {len(pos_samples) + len(neg_samples)}")
 
-    data = pd.concat([pos_data, neg_data], ignore_index=True)
-    return data
+    all_samples = pos_samples + neg_samples
+    
+    # 计算正负样本比例
+    pos_ratio = len(pos_samples) / len(all_samples)
+    neg_ratio = len(neg_samples) / len(all_samples)
+    print(f"正样本比例: {pos_ratio:.2%}")
+    print(f"负样本比例: {neg_ratio:.2%}")
 
-def preprocess_data(data):
+    return all_samples
+
+def calculate_window_size(hours):
     """
-    预处理数据，包括处理缺失值和标准化。
+    根据小时数计算时间窗口大小。
 
     Args:
-        data (pd.DataFrame): 原始数据集。
+        hours (float): 所需的小时数。
 
     Returns:
-        np.ndarray, pd.Series, StandardScaler: 特征矩阵、标签向量和标准化器。
+        int: 对应的时间窗口大小（数据点数量）。
     """
-    # 处理缺失值
-    data = data.dropna()
+    return int(hours * 6)  # 每小时6个数据点（10分钟间隔）
 
-    # 分离特征和标签
-    X = data.drop(['timestamp', 'label'], axis=1)
-    y = data['label']
+def preprocess_data(samples, window_size):
+    """
+    预处理数据，包括处理缺失值、标准化和创建滑动窗口。
 
-    # 标准化特征
+    Args:
+        samples (list of TimeSeriesSample): 原始样本列表。
+        window_size (int): 时间窗口大小（数据点数量）。
+
+    Returns:
+        list of TimeSeriesSample: 预处理后的样本列表。
+        StandardScaler: 标准化器对象。
+        list: 所有特征名称的列表。
+    """
+    # 获取所有唯一的特征名
+    all_feature_names = list(set(feature for sample in samples for feature in sample.feature_names))
+    all_feature_names.sort()  # 确保特征顺序一致
+
+    # 找出最大的时间步长
+    max_time_steps = max(sample.features.shape[0] for sample in samples)
+
+    # 创建标准化器
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
 
-    return X_scaled, y, scaler
+    # 对每个样本进行预处理
+    for sample in samples:
+        sample.preprocess(all_feature_names, max_time_steps, window_size, scaler)
 
-def select_features_traditional(X, y, method='f_regression', k=10):
+    return samples, scaler, all_feature_names
+
+def select_features_traditional(X, y, n_features=10):
     """
-    使用传统的特征选择方法。
+    使用传统方法进行特征选择。
 
     Args:
-        X (np.ndarray): 特征矩阵。
-        y (pd.Series): 标签向量。
-        method (str): 特征选择方法，默认为 'f_regression'。
-        k (int): 选择的特征数量。
+        X (np.ndarray): 特征矩阵，形状为 (n_samples, n_time_steps, n_features)。
+        y (np.ndarray): 标签向量。
+        n_features (int): 要选择的特征数量。
 
     Returns:
-        np.ndarray, list, object: 选择后的特征矩阵、选择的特征索引和选择器对象。
+        np.ndarray, list, SelectKBest: 选择后的特征矩阵、选择的特征索引和选择器对象。
     """
-    from sklearn.feature_selection import SelectKBest, f_regression
+    # 计算每个样本在时间维度上的平均值
+    X_mean = X.mean(axis=1)  # 现在 X_mean 的形状是 (n_samples, n_features)
 
-    selector = SelectKBest(score_func=f_regression, k=k)
-    X_new = selector.fit_transform(X, y)
-    selected_features = selector.get_support(indices=True)
-    return X_new, selected_features, selector
+    # 使用互信息回归进行特征选择
+    selector = SelectKBest(mutual_info_regression, k=n_features)
+    X_new = selector.fit_transform(X_mean, y)
+    
+    # 获取被选中的特征的索引
+    selected_feature_indices = selector.get_support(indices=True)
+    
+    # 在原始的三维数组上选择特征
+    X_selected = X[:, :, selected_feature_indices]
 
-def select_features_with_llm(X, y, feature_names, memory):
+    return X_selected, selected_feature_indices, selector
+
+def select_features_with_llm(X, y, feature_names, memory, window_size):
     """
-    利用LLM进行自动特征选择，并参考记忆系统。LLM将根据数据特征和历史反馈自动决定选择的特征数量。
+    使用LLM进行特征选择。
 
     Args:
-        X (np.ndarray): 特征矩阵。
-        y (pd.Series): 标签向量。
-        feature_names (list): 原始特征名称列表。
-        memory (dict): 记忆系统，包括 'long_term_memory' 和 'short_term_memory'。
+        X (np.ndarray): 特征矩阵，形状为 (n_samples, n_time_steps, n_features)。
+        y (np.ndarray): 标签向量。
+        feature_names (list): 特征名称列表。
+        memory (dict): 记忆系统。
+        window_size (int): 时间窗口大小。
 
     Returns:
-        np.ndarray, list: 选择后的特征矩阵和特征索引。
+        np.ndarray, list: 选择后的特征矩阵和选择的特征索引。
     """
-    # 计算基本的统计信息
-    df = pd.DataFrame(X, columns=feature_names)
-    
-    # 移除标准差为零的列
-    std_dev = df.std()
-    valid_columns = std_dev[std_dev != 0].index
-    df = df[valid_columns]
-    
-    # 重新计算相关性，忽略 NaN 值
-    correlation = df.corrwith(pd.Series(y), method='pearson').abs()
-    correlation = correlation.sort_values(ascending=False)
-    
-    # 移除 NaN 值
-    correlation = correlation.dropna()
+    # print(f"在select_features_with_llm中，X shape: {X.shape}")
 
-    # 构建提示信息，包含长期记忆中的模式和短期记忆中的反馈
-    historical_patterns = memory.get('long_term_memory', {}).get('historical_patterns', [])
-    recent_feedback = memory.get('short_term_memory', {}).get('recent_feedback', [])
-    
+    # 将所有样本和时间步展平为一个2D数组
+    X_flat = X.reshape(-1, X.shape[2])
+
+    # 计算每个特征的方差
+    X_var = X_flat.var(axis=0)
+
+    # 计算每个特征的平均值
+    X_mean = X_flat.mean(axis=0)
+
+    # 计算每个特征的最大值和最小值
+    X_max = X_flat.max(axis=0)
+    X_min = X_flat.min(axis=0)
+
+    # 准备特征统计信息
+    feature_stats = [
+        {
+            "name": name,
+            "mean": mean,
+            "variance": var,
+            "max": max_val,
+            "min": min_val
+        }
+        for name, mean, var, max_val, min_val in zip(feature_names, X_mean, X_var, X_max, X_min)
+    ]
+
+    # 构建提示信息
     prompt = f"""
-    我有以下特征及其与目标变量的相关性：
+    我有以下特征及其统计信息：
 
-    {correlation.to_string()}
+    {json.dumps(feature_stats, ensure_ascii=False, indent=2)}
+
+    时间窗口大小: {window_size}
 
     历史模式：
-    {json.dumps(historical_patterns, ensure_ascii=False)}
+    {json.dumps(memory.get('long_term_memory', {}).get('historical_patterns', []), ensure_ascii=False)}
 
     最近的反馈：
-    {json.dumps(recent_feedback, ensure_ascii=False)}
+    {json.dumps(memory.get('short_term_memory', {}).get('recent_feedback', []), ensure_ascii=False)}
 
     请基于这些信息，选择对预测目标变量最有用的特征。特征数量不固定，由你根据数据特征和历史反馈自主决定。
     请解释你的选择理由，并说明为什么选择这个数量的特征。
@@ -133,6 +188,14 @@ def select_features_with_llm(X, y, feature_names, memory):
 
     解释:
     你的解释文本。
+
+    回复格式：
+    选择的特征：
+    - feature1
+    - feature2
+    - ...
+
+    解释：你的解释文本。
 
     """
 
@@ -167,7 +230,7 @@ def select_features_with_llm(X, y, feature_names, memory):
 
     # 根据选择的特征索引进行特征选择
     selected_indices = [feature_names.index(feat) for feat in selected_features]
-    X_selected = X[:, selected_indices]
+    X_selected = X[:, :, selected_indices]
 
     # 更新短期记忆
     memory['short_term_memory']['recent_features'] = selected_features
@@ -187,7 +250,7 @@ def parse_llm_output(llm_output):
         llm_output (str): LLM的输出文本。
 
     Returns:
-        list, str: ��择的特征名称列表和选择理由。
+        list, str: 择的特征名称列表和选择理由。
     """
     selected_features = []
     explanation = ""
@@ -197,10 +260,10 @@ def parse_llm_output(llm_output):
     explanation_section = False
     
     for line in lines:
-        if line.strip() == "选择的特征:":
+        if "选择的特征" in line.strip():
             feature_section = True
             explanation_section = False
-        elif line.strip() == "解释:":
+        elif "解释" in line.strip():
             feature_section = False
             explanation_section = True
         elif feature_section and line.strip().startswith('-'):
@@ -210,113 +273,230 @@ def parse_llm_output(llm_output):
 
     return selected_features, explanation.strip()
 
-def select_features_with_llm_feedback(X, y, feature_names, memory, max_iterations=3):
+def select_window_size_with_llm(memory):
     """
-    利用LLM进行自动特征选择，并根据反馈迭代更新选择，参考记忆系统。
+    利用LLM根据记忆自动选择时间窗口大小。
 
     Args:
-        X (np.ndarray): 特征矩阵。
-        y (pd.Series): 标签向量。
-        feature_names (list): 原始特征名称列表。
-        memory (dict): 记忆系统，包括 'long_term_memory' 和 'short_term_memory'。
-        max_iterations (int): 最大迭代次数。
+        memory (dict): 记忆系统。
 
     Returns:
-        np.ndarray, list: 选择后的特征矩阵和特征索引。
+        float: 选择的时间窗口大小（小时）。
     """
-    for iteration in range(max_iterations):
-        print(f"LLM 特征选择迭代 {iteration + 1}/{max_iterations}...")
-        X_selected, selected_indices = select_features_with_llm(X, y, feature_names, memory)
-        
-        if X_selected is None:
-            print("LLM选择失败，退出迭代。")
-            break
-        
-        selected_features = [feature_names[idx] for idx in selected_indices]
-        
-        # 更新记忆系统的短期记忆
-        if 'short_term_memory' not in memory:
-            memory['short_term_memory'] = {'recent_features': [], 'recent_feedback': []}
-        memory['short_term_memory']['recent_features'] = selected_features
-        
-        # 检查是否有显著变化
-        if iteration > 0 and set(selected_features) == set(previous_features):
-            print("特征选择没有显著变化，结束迭代。")
-            break
-        
-        previous_features = selected_features
+    historical_patterns = memory.get('long_term_memory', {}).get('historical_patterns', [])
+    recent_feedback = memory.get('short_term_memory', {}).get('recent_feedback', [])
+    
+    prompt = f"""
+    根据以下信息，选择一个合适的时间窗口大小（以小时为单位）：
 
-    if not selected_features:
-        print("未能通过LLM选择到特征，使用传统方法进行选择。")
-        return select_features_traditional(X, y, method='f_regression', k=10)[:2]  # 返回X_new, selected_features
+    历史模式：
+    {json.dumps(historical_patterns, ensure_ascii=False, indent=2)}
 
-    return X_selected, selected_indices
+    最近的反馈：
+    {json.dumps(recent_feedback, ensure_ascii=False, indent=2)}
 
-def save_selected_features(data, selected_feature_indices, scaler, selector, output_path):
+    请考虑以下因素：
+    1. 历史模式中出现的时间相关特征
+    2. 最近反馈中提到的时间窗口建议
+    3. 故障模式的典型持续时间
+    4. 数据的采样频率（每10分钟一个数据点）
+    5. 原始数据最多只采集了3小时，因此时间窗口不能超过3小时
+
+    请给出一个小时数作为时间窗口大小，可以是小数（精确到0.5小时），并解释你的选择理由。
+    时间窗口必须大于等于0.5小时且小于等于3小时。
+
+    回复格式：
+    时间窗口大小：X小时
+    解释：你的解释文本。
     """
-    保存选择后的特征和相关对象。
+
+    try:
+        client = openai.OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY", "infra-ppt-creativity"),
+            base_url=os.getenv("LLM_API_BASE_URL", "https://api.lingyiwanwu.com/v1")
+        )
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "你是一个数据科学家，擅长时间序列分析和特征工程。"},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=300
+        )
+    except Exception as e:
+        print(f"调用LLM时出错: {e}")
+        return 1.5  # 默认返回1.5小时作为备选
+
+    llm_output = response.choices[0].message.content
+    window_size, explanation = parse_window_size_output(llm_output)
+
+    print(f"LLM建议的时间窗口大小：{window_size}小时")
+    print(f"解释：{explanation}")
+
+    return window_size
+
+def parse_window_size_output(llm_output):
+    """
+    解析LLM的出，提取时间窗口大小和解释。
 
     Args:
-        data (pd.DataFrame): 原始数据集。
-        selected_feature_indices (list): 选择的特征索引。
-        scaler (StandardScaler): 标准化器对象。
-        selector (SelectKBest or None): 特征选择器对象。
-        output_path (str): 输出路径。
+        llm_output (str): LLM的输出文本。
+
+    Returns:
+        float, str: 时间窗口大小（小时）和解释。
     """
-    selected_columns = data.drop(['timestamp', 'label'], axis=1).columns[selected_feature_indices]
-    data_selected = data[['label'] + list(selected_columns)]
+    lines = llm_output.split('\n')
+    window_size = 1.5  # 默认值
+    explanation = ""
+    
+    for line in lines:
+        if line.startswith("时间窗口大小："):
+            try:
+                window_size = float(line.split("：")[1].split("小时")[0])
+            except ValueError:
+                print("无法解析时间窗口大小，使用默认值1.5小时")
+        elif line.startswith("解释："):
+            explanation = line.split("：", 1)[1].strip()
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    data_selected.to_csv(output_path, index=False)
+    return window_size, explanation
 
-    # 保存 scaler 和 selector
-    joblib.dump(scaler, os.path.join(os.path.dirname(output_path), 'scaler.pkl'))
-    if selector is not None:
-        joblib.dump(selector, os.path.join(os.path.dirname(output_path), 'feature_selector.pkl'))
-
-def main(memory):
+def select_and_save_features(memory):
     """
-    主函数，执行特征工程流程。
+    执行特征选择和保存流程。
 
     Args:
-        memory (dict): 记忆系统，包括 'long_term_memory' 和 'short_term_memory'。
+        memory (dict): 记忆系统。
     """
     processed_data_dir = "./data/raw/processed/"
     pos_data_dir = os.path.join(processed_data_dir, "pos")
     neg_data_dir = os.path.join(processed_data_dir, "neg")
-    output_selected_data = os.path.join(processed_data_dir, "selected_features.csv")
+    output_selected_data = os.path.join(processed_data_dir, "selected_features.jsonl")
 
     print("加载数据...")
-    data = load_processed_data(pos_data_dir, neg_data_dir)
+    samples = load_processed_data(pos_data_dir, neg_data_dir)
+
+    print("使用LLM选择时间窗口大小...")
+    window_hours = select_window_size_with_llm(memory)
+    window_size = calculate_window_size(window_hours)
+
+    print(f"使用 {window_hours:.1f} 小时的时间窗口（{window_size} 个数据点）")
 
     print("预处理数据...")
-    X, y, scaler = preprocess_data(data)
-    feature_names = data.drop(['timestamp', 'label'], axis=1).columns.tolist()
+    preprocessed_samples, scaler, all_feature_names = preprocess_data(samples, window_size)
 
-    # 选择特征的方法：'traditional', 'llm', 'llm_feedback'
-    selection_method = 'llm_feedback'  # 可以根据需要切换
+    # 准备特征矩阵和标签向量
+    X = np.array([sample.preprocessed_features for sample in preprocessed_samples])
+    y = np.array([sample.label for sample in preprocessed_samples])
 
-    if selection_method == 'traditional':
-        print("使用传统方法选择特征...")
-        X_selected, selected_feature_indices, selector = select_features_traditional(X, y, method='f_regression', k=10)
-    elif selection_method == 'llm':
-        print("使用LLM自动选择特征...")
-        X_selected, selected_feature_indices = select_features_with_llm(X, y, feature_names, memory)
-        selector = None  # 如果需要保存LLM选择器，可自定义保存逻辑
-    elif selection_method == 'llm_feedback':
-        print("使用LLM自动选择特征并根据反馈更新...")
-        X_selected, selected_feature_indices = select_features_with_llm_feedback(X, y, feature_names, memory, max_iterations=3)
-        selector = None  # LLM选择器不保存
+    print("使用LLM进行特征选择...")
+    X_selected, selected_feature_indices = select_features_with_llm(X, y, all_feature_names, memory, window_size)
+
+    if X_selected is None:
+        print("LLM特征选择失败，使用传统方法...")
+        X_selected, selected_feature_indices, selector = select_features_traditional(X, y)
     else:
-        raise ValueError("不支持的特征选择方法。")
+        selector = None
+
+    # 获取选中特征的名称
+    selected_feature_names = [all_feature_names[i] for i in selected_feature_indices]
 
     print("保存选择后的特征和相关对象...")
-    save_selected_features(data, selected_feature_indices, scaler, selector, output_selected_data)
+    save_selected_features(preprocessed_samples, selected_feature_indices, selected_feature_names, 
+                           scaler, selector, output_selected_data, window_size)
 
     print("特征工程完成。选择的特征已保存至", output_selected_data)
 
+def save_selected_features(samples, selected_feature_indices, selected_feature_names, scaler, selector, output_path, window_size):
+    """
+    保存选择后的特征和相关对象。
+
+    Args:
+        samples (list of TimeSeriesSample): 预处理后的样本列表。
+        selected_feature_indices (list): 选择的特征索引。
+        selected_feature_names (list): 选择的特征名称。
+        scaler (StandardScaler): 标准化器对象。
+        selector (SelectKBest or None): 特征选择器对象。
+        output_path (str): 输出路径。
+        window_size (int): 时间窗口大小（数据点数量）。
+    """
+    # 创建输出目录（如果不存在）
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    # 保存样本数据为 JSONL 文件
+    jsonl_path = os.path.splitext(output_path)[0] + '.jsonl'
+    with open(jsonl_path, 'w') as f:
+        for sample in samples:
+            # 只保存选中的特征
+            sample.preprocessed_features = sample.preprocessed_features[:, :, selected_feature_indices]
+            sample.feature_names = selected_feature_names
+            f.write(sample.to_json() + '\n')
+    print(f"选择的特征数据已保存至 {jsonl_path}")
+
+    # 保存 metadata
+    metadata = {
+        'window_size': window_size,
+        'selected_features': selected_feature_names
+    }
+    metadata_path = os.path.join(os.path.dirname(output_path), 'metadata.pkl')
+    joblib.dump(metadata, metadata_path)
+    print(f"Metadata 已保存至 {metadata_path}")
+
+    # 保存 scaler
+    if scaler is not None:
+        scaler_path = os.path.join(os.path.dirname(output_path), 'scaler.pkl')
+        joblib.dump(scaler, scaler_path)
+        print(f"Scaler 已保存至 {scaler_path}")
+    else:
+        print("没有提供 Scaler 对象，跳过保存")
+
+    # 如果有 selector，也保存它
+    if selector is not None:
+        selector_path = os.path.join(os.path.dirname(output_path), 'selector.pkl')
+        joblib.dump(selector, selector_path)
+        print(f"Selector 已保存至 {selector_path}")
+    else:
+        print("没有提供 Selector 对象，跳过保存")
+
+    print(f"时间窗口大小: {window_size} 数据点（{window_size/6:.1f} 小时）")
+    print(f"选择的特征: {', '.join(selected_feature_names)}")
+
+def load_selected_features(input_path):
+    """
+    加载保存的特征数据并重构为3D格式。
+
+    Args:
+        input_path (str): 输入CSV文件路径。
+
+    Returns:
+        list of dict: 重构后的样本列表。
+        dict: 元数据，包含窗口大小和选择的特征。
+    """
+    # 加载CSV数据
+    df = pd.read_csv(input_path)
+    
+    # 加载元数据
+    metadata = joblib.load(os.path.join(os.path.dirname(input_path), 'metadata.pkl'))
+    window_size = metadata['window_size']
+    selected_features = metadata['selected_features']
+
+    # 重构样本
+    samples = []
+    for sample_id in df['sample_id'].unique():
+        sample_df = df[df['sample_id'] == sample_id]
+        features = sample_df[selected_features].values
+        label = sample_df['label'].iloc[0]
+        timestamp = sample_df['timestamp'].values
+        
+        samples.append({
+            'features': features,
+            'label': label,
+            'timestamp': timestamp
+        })
+
+    return samples, metadata
+
 if __name__ == "__main__":
-    # 示例记忆系统结构（参考真实样本数据）
+    # 定义记忆系统
     memory_system = {
         'long_term_memory': {
             'historical_patterns': [
@@ -330,18 +510,22 @@ if __name__ == "__main__":
                         'ib_device_stat_bias_current_c_3',
                         'ib_device_stat_temperature'
                     ],
-                    'occurrence_rate': 0.04
+                    'typical_duration': '1-3小时',
+                    'occurrence_rate': 0.04,
+                    'recommended_window': '2-3小时'
                 },
                 {
                     'pattern_id': 2,
-                    'description': '接收功率异常波动引发的信号质量下降',
+                    'description': '接收功率异常波动引发的号质量下降',
                     'features': [
                         'ib_device_stat_rx_power_current_c_0',
                         'ib_device_stat_rx_power_current_c_1',
                         'ib_device_stat_rx_power_current_c_2',
                         'ib_device_stat_rx_power_current_c_3'
                     ],
-                    'occurrence_rate': 0.03
+                    'typical_duration': '1-2小时',
+                    'occurrence_rate': 0.03,
+                    'recommended_window': '1.5-2小时'
                 },
                 {
                     'pattern_id': 3,
@@ -352,17 +536,17 @@ if __name__ == "__main__":
                         'ib_device_stat_tx_power_current_c_2',
                         'ib_device_stat_tx_power_current_c_3'
                     ],
-                    'occurrence_rate': 0.02
+                    'typical_duration': '30分钟-2小时',
+                    'occurrence_rate': 0.02,
+                    'recommended_window': '1-1.5小时'
                 }
-                # 可以根据实际情况添加更多历史模式
             ],
             'model_performance': {
-                'xgboost': {'accuracy': 0.82, 'f1_score': 0.78},
-                'lstm': {'accuracy': 0.85, 'f1_score': 0.80},
-                'gru': {'accuracy': 0.84, 'f1_score': 0.79},
-                'cnn': {'accuracy': 0.80, 'f1_score': 0.75},
-                'transformer_encoder': {'accuracy': 0.86, 'f1_score': 0.81}
-                # 可以根据实际情况添加更多模型的性能数据
+                'xgboost': {'accuracy': 0.82, 'f1_score': 0.78, 'optimal_window': '2.5小时'},
+                'lstm': {'accuracy': 0.85, 'f1_score': 0.80, 'optimal_window': '2.5小时'},
+                'gru': {'accuracy': 0.84, 'f1_score': 0.79, 'optimal_window': '2.5小时'},
+                'cnn': {'accuracy': 0.80, 'f1_score': 0.75, 'optimal_window': '2小时'},
+                'transformer_encoder': {'accuracy': 0.86, 'f1_score': 0.81, 'optimal_window': '2.5小时'}
             }
         },
         'short_term_memory': {
@@ -372,18 +556,24 @@ if __name__ == "__main__":
                 'ib_device_stat_bias_current_c_2',
                 'ib_device_stat_bias_current_c_3',
                 'ib_device_stat_rx_power_current_c_0',
-                'ib_device_stat_tx_power_current_c_0'
-                # 最近选择的特征
+                'ib_device_stat_tx_power_current_c_0',
+                'ib_device_stat_temperature'
             ],
             'recent_feedback': [
-                '添加特征 ib_device_stat_temperature 以监控设备温度变化。',
-                '移除特征 ib_device_stat_wavelength 因为其相关性较低且增加了模型复杂度。',
-                '考虑增加 ib_device_stat_rx_power_current_c_1 到 c_3，因为它们可能与信号质量下降有关。',
-                '建议保留所有偏置电流特征，因为它们在历史模式中频繁出现。'
-                # 最近的反馈信息
+                '最近的实验表明，2.5小时的时间窗口在捕捉大多数故障模式方面表现良好。',
+                '对于某些快速变化的特征，如接收功率波动，1.5-2小时的窗口可能更合适。',
+                '考虑到数据采集限制，3小时的窗口能够捕捉到最长的可能趋势。',
+                '1小时的窗口在捕捉短期波动方面表现出色，特别是对于发送功率相关的问题。',
+                '综合考虑各种故障模式，2-2.5小时的窗口似乎能够在捕捉短期波动和长期趋势之间取得良好的平衡。'
+            ],
+            'window_size_history': [
+                {'timestamp': '2023-06-01', 'window_size': 1.5, 'performance': 'Good'},
+                {'timestamp': '2023-06-15', 'window_size': 2.0, 'performance': 'Better'},
+                {'timestamp': '2023-07-01', 'window_size': 2.5, 'performance': 'Best so far'},
+                {'timestamp': '2023-07-15', 'window_size': 3.0, 'performance': 'Good, but at the limit'}
             ]
         }
     }
 
-    # 调用主函数并传入示例记忆系统
-    main(memory_system)
+    # 执行特征选择和保存
+    select_and_save_features(memory_system)
