@@ -1,5 +1,5 @@
 from collections import deque
-from datetime import datetime
+from datetime import datetime, date
 import json
 
 class ShortTermMemory:
@@ -25,7 +25,7 @@ class ShortTermMemory:
         :param prediction: 预测结果
         """
         self.recent_predictions.append({
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'prediction': prediction
         })
 
@@ -35,7 +35,7 @@ class ShortTermMemory:
         :param evaluation: 评估结果
         """
         self.recent_evaluations.append({
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'evaluation': evaluation
         })
 
@@ -45,7 +45,7 @@ class ShortTermMemory:
         :param feedback: 反馈信息
         """
         self.recent_feedback.append({
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'feedback': feedback
         })
 
@@ -55,7 +55,7 @@ class ShortTermMemory:
         :param characteristics: 数据特征信息
         """
         self.recent_data_characteristics.append({
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'characteristics': characteristics
         })
 
@@ -65,7 +65,7 @@ class ShortTermMemory:
         :param event: 外部事件信息
         """
         self.recent_external_events.append({
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'event': event
         })
 
@@ -75,7 +75,7 @@ class ShortTermMemory:
         :param performance: 模型性能信息
         """
         self.recent_model_performances.append({
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'performance': performance
         })
 
@@ -115,7 +115,7 @@ class LongTermMemory:
         if len(self.historical_failure_patterns) >= self.max_patterns:
             self.historical_failure_patterns.pop(0)
         self.historical_failure_patterns.append({
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'pattern': pattern
         })
 
@@ -126,7 +126,7 @@ class LongTermMemory:
         :param configuration: 模型配置信息
         """
         self.successful_model_configurations[model_name] = {
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'configuration': configuration
         }
 
@@ -136,7 +136,7 @@ class LongTermMemory:
         :param trend: 性能趋势信息
         """
         self.long_term_performance_trends.append({
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'trend': trend
         })
 
@@ -146,7 +146,7 @@ class LongTermMemory:
         :param shift: 特征分布变化信息
         """
         self.network_feature_distribution_shifts.append({
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'shift': shift
         })
 
@@ -156,7 +156,7 @@ class LongTermMemory:
         :param impact: 外部因素影响信息
         """
         self.external_factor_impacts.append({
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'impact': impact
         })
 
@@ -169,7 +169,7 @@ class LongTermMemory:
         if model_name not in self.model_performance_history:
             self.model_performance_history[model_name] = []
         self.model_performance_history[model_name].append({
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'performance': performance
         })
 
@@ -287,7 +287,7 @@ class MemorySystem:
                 item for item in data if any(keyword in str(item) for keyword in context)
             ]
 
-        return relevant_memory
+        return json.loads(json.dumps(relevant_memory, default=json_serializable))
 
     def save_to_json(self, file_path):
         """
@@ -305,7 +305,7 @@ class MemorySystem:
             }
         }
         with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(memory_data, f, ensure_ascii=False, indent=2)
+            json.dump(memory_data, f, default=json_serializable, ensure_ascii=False, indent=2)
 
     @classmethod
     def load_from_json(cls, file_path):
@@ -326,6 +326,22 @@ class MemorySystem:
             setattr(memory_system.long_term, attr, data)
         
         return memory_system
+
+def json_serializable(obj):
+    if isinstance(obj, datetime):
+        return obj.strftime('%Y-%m-%d %H:%M:%S')
+    elif isinstance(obj, date):
+        return obj.strftime('%Y-%m-%d')
+    elif isinstance(obj, deque):
+        return list(obj)
+    elif isinstance(obj, set):
+        return list(obj)
+    raise TypeError(f"Type {type(obj)} not serializable")
+
+def deque_to_list(obj):
+    if isinstance(obj, deque):
+        return list(obj)
+    return obj
 
 if __name__ == "__main__":
     # 创建MemorySystem实例
@@ -420,13 +436,15 @@ if __name__ == "__main__":
     print(json.dumps(relevant_memory, indent=2, ensure_ascii=False))
 
     # 保存记忆系统到JSON文件
-    memory_system.save_to_json('memory_system.json')
+    memory_system.save_to_json('./src/memory/memory_example.json')
 
     # 从JSON文件加载记忆系统
-    loaded_memory_system = MemorySystem.load_from_json('memory_system.json')
+    loaded_memory_system = MemorySystem.load_from_json('./src/memory/memory_example.json')
 
     # 验证加载的记忆
     print("\n加载后的短期记忆:")
-    print(json.dumps(loaded_memory_system.short_term.__dict__, indent=2, ensure_ascii=False))
+    # 在打印之前,先将 deque 转换为列表
+    short_term_dict = {k: deque_to_list(v) for k, v in loaded_memory_system.short_term.__dict__.items()}
+    print(json.dumps(short_term_dict, indent=2, ensure_ascii=False))
     print("\n加载后的长期记忆:")
     print(json.dumps(loaded_memory_system.long_term.__dict__, indent=2, ensure_ascii=False))
