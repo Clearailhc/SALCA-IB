@@ -1,4 +1,7 @@
+import sys
 import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pandas as pd
 import joblib
 import json
@@ -8,6 +11,7 @@ from sklearn.model_selection import train_test_split
 from openai import OpenAI
 from datetime import datetime
 from time_series_sample import TimeSeriesSample
+from memory.memory import MemorySystem
 
 # 在文件开头添加这行代码
 client = OpenAI(
@@ -102,20 +106,25 @@ def select_training_data_traditional_timestamp(data, start_time, end_time, train
 
     return X_train, X_test, y_train, y_test
 
-def select_training_data_with_llm_timestamp(samples, memory):
+def select_training_data_with_llm_timestamp(samples, memory_system):
     """
     利用LLM进行自动训练数据选择基于时间戳，并参考记忆系统。
 
     Args:
         samples (list of TimeSeriesSample): 原始数据样本列表。
-        memory (dict): 记忆系统，包括 'long_term_memory' 和 'short_term_memory'。
+        memory_system (MemorySystem): 记忆系统实例。
 
     Returns:
         list, list: 训练集样本列表和测试集样本列表。
     """
-    # 构建提示信息，包含长期记忆中的模式和短期记忆中的反馈
-    historical_patterns = memory.get('long_term_memory', {}).get('historical_patterns', [])
-    recent_feedback = memory.get('short_term_memory', {}).get('recent_feedback', [])
+    # 获取相关记忆
+    context = ['failure_patterns', 'model_performance', 'feedback']
+    relevant_memory = memory_system.get_relevant_memory(context)
+
+    # 构建提示信息
+    historical_patterns = relevant_memory.get('long_term', {}).get('failure_patterns', [])
+    model_performance = relevant_memory.get('long_term', {}).get('model_performance', [])
+    recent_feedback = relevant_memory.get('short_term', {}).get('feedback', [])
 
     # 获取数据的时间范围
     all_timestamps = [sample.timestamp[0] for sample in samples] + [sample.timestamp[-1] for sample in samples]
@@ -136,8 +145,11 @@ def select_training_data_with_llm_timestamp(samples, memory):
     
     数据的时间范围是从 {min_time} 到 {max_time}。
 
-    历史模式：
+    历史故障模式：
     {json.dumps(historical_patterns, ensure_ascii=False)}
+    
+    模型性能：
+    {json.dumps(model_performance, ensure_ascii=False)}
     
     最近的反馈：
     {json.dumps(recent_feedback, ensure_ascii=False)}
@@ -201,14 +213,14 @@ def select_training_data_with_llm_timestamp(samples, memory):
     train_samples, test_samples = train_test_split(selected_samples, train_size=train_ratio, random_state=42)
 
     # 更新短期记忆
-    memory['short_term_memory']['recent_training_selection'] = {
+    memory_system.update_memory('short_term', 'recent_training_selection', {
         'time_period': {
             '开始时间': datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S'),
             '结束时间': datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
         },
         'train_ratio': train_ratio
-    }
-    memory['short_term_memory']['recent_feedback'].append(explanation)
+    })
+    memory_system.update_memory('short_term', 'feedback', explanation)
 
     print(f"选择的时间段: {datetime.fromtimestamp(start_time)} 到 {datetime.fromtimestamp(end_time)}")
     print(f"训练集比例: {train_ratio}")
@@ -309,18 +321,27 @@ def save_selected_training_data(train_samples, test_samples, output_dir):
     
     print(f"训练测试数据已保存至 {output_dir}")
 
-def select_and_save_training_data(memory=None):
+def select_and_save_training_data(memory_path=None):
     """
     执行训练数据选择和保存流程。
 
     Args:
-        memory (dict, optional): 记忆系统，包括 'long_term_memory' 和 'short_term_memory'。默认为 None。
-
-    Raises:
-        ValueError: 当使用 LLM 选择训练时间但 memory 为空时抛出。
+        memory_path (str, optional): 记忆系统的JSON文件路径。
+                                     如果未提供，将使用默认路径。
     """
     data_path = "./data/raw/processed/selected_features.jsonl"  # 数据文件路径
     output_dir = "./data/raw/processed/training_data/"
+
+    # 使用提供的路径或默认路径加载记忆系统
+    default_memory_path = './src/memory/memory_test.json'
+    memory_path = memory_path or default_memory_path
+    
+    try:
+        memory_system = MemorySystem.load_from_json(memory_path)
+        print(f"成功从 {memory_path} 加载记忆系统")
+    except FileNotFoundError:
+        print(f"警告：未找到记忆文件 {memory_path}，将创建新的记忆系统")
+        memory_system = MemorySystem()
 
     print("加载数据...")
     samples = load_data(data_path)
@@ -330,9 +351,7 @@ def select_and_save_training_data(memory=None):
 
     if selection_method == 'llm_time':
         print("使用LLM自动选择训练和测试数据的时间段和比例...")
-        if memory is None:
-            raise ValueError("使用 LLM 选择训练时间时，memory 参数不能为空。")
-        train_samples, test_samples = select_training_data_with_llm_timestamp(samples, memory)
+        train_samples, test_samples = select_training_data_with_llm_timestamp(samples, memory_system)
     else:
         raise ValueError("不支持的数据选择方法。")
 
@@ -341,77 +360,11 @@ def select_and_save_training_data(memory=None):
 
     print("训练数据选择完成。")
 
-if __name__ == "__main__":
-    # 示例记忆系统结构（参考真实样本数据）
-    memory_system = {
-        'long_term_memory': {
-            'historical_patterns': [
-                {
-                    'pattern_id': 1,
-                    'description': '夏季高温导致的设备过热故障模式',
-                    'features': [
-                        'ib_device_stat_bias_current_c_0',
-                        'ib_device_stat_bias_current_c_1',
-                        'ib_device_stat_bias_current_c_2',
-                        'ib_device_stat_bias_current_c_3',
-                        'ib_device_stat_temperature'
-                    ],
-                    'occurrence_rate': 0.05,
-                    'typical_period': '7月中旬至8月中旬'
-                },
-                {
-                    'pattern_id': 2,
-                    'description': '雷雨季节信号质量波动',
-                    'features': [
-                        'ib_device_stat_rx_power_current_c_0',
-                        'ib_device_stat_rx_power_current_c_1',
-                        'ib_device_stat_rx_power_current_c_2',
-                        'ib_device_stat_rx_power_current_c_3'
-                    ],
-                    'occurrence_rate': 0.03,
-                    'typical_period': '6月下旬至8月上旬'
-                },
-                {
-                    'pattern_id': 3,
-                    'description': '设备维护后的性能波动',
-                    'features': [
-                        'ib_device_stat_tx_power_current_c_0',
-                        'ib_device_stat_tx_power_current_c_1',
-                        'ib_device_stat_tx_power_current_c_2',
-                        'ib_device_stat_tx_power_current_c_3'
-                    ],
-                    'occurrence_rate': 0.02,
-                    'typical_period': '每月初'
-                }
-            ],
-            'model_performance': {
-                'xgboost': {'accuracy': 0.83, 'f1_score': 0.79, 'last_updated': '2024-08-15'},
-                'lstm': {'accuracy': 0.86, 'f1_score': 0.82, 'last_updated': '2024-08-15'},
-                'gru': {'accuracy': 0.85, 'f1_score': 0.81, 'last_updated': '2024-08-15'},
-                'transformer_encoder': {'accuracy': 0.87, 'f1_score': 0.83, 'last_updated': '2024-08-15'}
-            },
-            'data_characteristics': {
-                'total_samples': 65000,  # 假设的样本数量
-                'positive_ratio': 0.15,  # 假设的正样本比例
-                'negative_ratio': 0.85,  # 假设的负样本比例
-                'typical_daily_samples': 1000  # 假设的每日平均样本数
-            }
-        },
-        'short_term_memory': {
-            'recent_training_selection': {
-                'time_period': {
-                    '开始时间': '2024-07-01',
-                    '结束时间': '2024-08-15'
-                },
-                'train_ratio': 0.8
-            },
-            'recent_feedback': [
-                '选择7月至8月中旬的数据作为训练集，以捕捉夏季高温和雷雨季节的特��。',
-                '保留0.2的数据作为测试集，用于评估模型在最近一周数据上的表现。',
-                '考虑增加对设备维护后性能波动的关注，可能需要更细粒度的时间划分。'
-            ]
-        }
-    }
+    # 保存更新后的记忆
+    memory_system.save_to_json(memory_path)
+    print(f"更新后的记忆系统已保存至 {memory_path}")
 
-    # 调用函数并传入示例记忆系统
-    select_and_save_training_data(memory_system)
+if __name__ == "__main__":
+    # 执行训练数据选择和保存
+    # 可以选择性地传入记忆文件路径
+    select_and_save_training_data()

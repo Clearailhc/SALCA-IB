@@ -2,7 +2,7 @@
   "short_term": {
     "predictions": [
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": {
           "model": "XGBoost",
           "prediction": 0.85,
@@ -20,7 +20,7 @@
         }
       },
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": {
           "model": "LSTM",
           "prediction": 0.78,
@@ -38,7 +38,7 @@
         }
       },
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": {
           "model": "Transformer",
           "prediction": 0.92,
@@ -58,37 +58,41 @@
     ],
     "feedback": [
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": "最近的实验表明，2.5小时的时间窗口在捕捉大多数故障模式方面表现良好。"
       },
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": "对于某些快速变化的特征，如接收功率波动，1.5-2小时的窗口可能更合适。"
       },
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": "1小时的窗口在捕捉短期波动方面表现出色，特别是对于发送功率相关的问题。"
       },
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": "综合考虑各种故障模式，2-2.5小时似乎能够在捕捉短期波动和长期趋势之间取得良好的平衡。"
+      },
+      {
+        "timestamp": "2024-10-11 19:20:18",
+        "data": "根据提供的信息，数据的时间范围是从 1718833800 (2024-06-19 03:50:00) 到 1724365200 (2024-08-22 21:00:00)。选择整个数据时间范围是为了确保所有可能的模式和特征在模型训练中都得到充分的利用。  1. **数据的多样性和代表性**: - 数据时间段覆盖了两个月，这可以保证数据的季节性和其它可能的时间相关的模式都包含在内。 - 从时间跨度来看，这个时间段内的环境变化（例如温度波动等）可能会影响设备的性能，用于捕捉这些变化对预测模型是非常重要的。  2. **标签分布**: - 标签分布是均衡的 {\"0\": 0.5, \"1\": 0.5}，这对于训练一个平衡的模型非常有利。确保模型能够同样地学习正常和故障状态下的模式。 - 此外，均衡的标签分布表明在整个时间段内，数据不会偏向特定的状态（正常或故障），这可以避免模型过拟合于非故障或过于乐观地预测故障。  3. **训练集比例**: - 选择0.8作为训练集比例。80%的数据用于训练模型，这在机器学习中是一个普遍接受的比例。它能确保模型有充足的数据学习，同时保留足够的数据用于验证和测试。 - 20%的数据作为验证和测试集，这部分数据可以帮助我们评估模型的性能，确保模型能够泛化到未见过的数据。  综上所述，选择整个可用的时间段以及80%的训练集比例是基于数据的多样性和代表性、均衡的标签分布以及常规的训练/验证分割比例考虑，这些都有助于构建一个可靠和有效的网络故障预测模型。"
       }
     ],
     "window_size": [
       {
-        "timestamp": "2024-10-11 19:12:28",
+        "timestamp": "2024-10-11 19:20:11",
         "data": 2.5
       }
     ],
     "window_size_explanation": [
       {
-        "timestamp": "2024-10-11 19:12:28",
+        "timestamp": "2024-10-11 19:20:11",
         "data": "综合考虑多个因素后，选择2.5小时作为时间窗口大小是最优的决策。"
       }
     ],
     "recent_features": [
       {
-        "timestamp": "2024-10-11 19:12:35",
+        "timestamp": "2024-10-11 19:20:11",
         "data": [
           "ib_device_stat_bias_current_c_0",
           "ib_device_stat_bias_current_c_1",
@@ -109,13 +113,13 @@
     ],
     "feature_selection_explanation": [
       {
-        "timestamp": "2024-10-11 19:12:35",
+        "timestamp": "2024-10-11 19:20:11",
         "data": "1. **故障模式关联**: - 根据历史故障模式的数据，\"高偏置电流导致的设备过热故障模式\"与 `ib_device_stat_bias_current_c_0`, `ib_device_stat_bias_current_c_1`, `ib_device_stat_bias_current_c_2`, `ib_device_stat_bias_current_c_3` 和 `ib_device_stat_temperature` 相关，因此这些特征很重要。 - \"接收功率异常波动引发的信号质量下降\"与 `ib_device_stat_rx_power_current_c_0`, `ib_device_stat_rx_power_current_c_1`, `ib_device_stat_rx_power_current_c_2`, `ib_device_stat_rx_power_current_c_3` 相关，所以这些特征也需要被选中。 - \"发送功率过高导致的信号干扰问题\"与 `ib_device_stat_tx_power_current_c_0`, `ib_device_stat_tx_power_current_c_1`, `ib_device_stat_tx_power_current_c_2`, `ib_device_stat_tx_power_current_c_3` 相关，因此这些特征不可或缺。  2. **特征的重要性**: - `ib_device_stat_voltage` 和 `ib_device_stat_temperature` 是重要的整体状态指标，决定设备在不同情况下的工作状态。 - `ib_device_stat_bias_current_c_0` 到 `ib_device_stat_bias_current_c_3` 特征的均值和方差显示了极其相近的数据范围，表明它们潜在的相关性和重要性。 - 类似地，`ib_device_stat_rx_power_current_c_0` 到 `ib_device_stat_rx"
       }
     ],
     "data_characteristics": [
       {
-        "timestamp": "2024-10-11 19:12:36",
+        "timestamp": "2024-10-11 19:20:11",
         "data": {
           "window_size": 15,
           "selected_features": [
@@ -136,12 +140,24 @@
           ]
         }
       }
+    ],
+    "recent_training_selection": [
+      {
+        "timestamp": "2024-10-11 19:20:18",
+        "data": {
+          "time_period": {
+            "开始时间": "2024-06-20 08:00:00",
+            "结束时间": "2024-08-23 08:00:00"
+          },
+          "train_ratio": 0.8
+        }
+      }
     ]
   },
   "long_term": {
     "failure_patterns": [
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": {
           "pattern_id": 1,
           "description": "高偏置电流导致的设备过热故障模式",
@@ -158,7 +174,7 @@
         }
       },
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": {
           "pattern_id": 2,
           "description": "接收功率异常波动引发的信号质量下降",
@@ -174,7 +190,7 @@
         }
       },
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": {
           "pattern_id": 3,
           "description": "发送功率过高导致的信号干扰问题",
@@ -192,7 +208,7 @@
     ],
     "model_performance": [
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": {
           "xgboost": {
             "accuracy": 0.82,
@@ -204,7 +220,7 @@
         }
       },
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": {
           "lstm": {
             "accuracy": 0.85,
@@ -216,7 +232,7 @@
         }
       },
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": {
           "gru": {
             "accuracy": 0.84,
@@ -228,7 +244,7 @@
         }
       },
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": {
           "cnn": {
             "accuracy": 0.8,
@@ -240,7 +256,7 @@
         }
       },
       {
-        "timestamp": "2024-10-11 19:12:22",
+        "timestamp": "2024-10-11 19:20:11",
         "data": {
           "transformer_encoder": {
             "accuracy": 0.86,
