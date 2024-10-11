@@ -5,7 +5,26 @@ import json
 from datetime import timedelta
 
 class TimeSeriesSample:
+    """
+    TimeSeriesSample 类用于处理和预处理时间序列数据。
+
+    时间序列数据是按时间顺序索引（或列出）的数据点序列。在这个类中：
+    - features: 二维数组，形状为 (时间步数, 特征数)，表示随时间变化的多个特征。
+    - label: 整数，表示该时间序列样本的类别或标签。
+    - timestamp: 一维数组，与特征数组长度相同，表示每个时间步的时间戳。
+    - feature_names: 列表，包含所有特征的名称。
+    """
+
     def __init__(self, features, label, timestamp, feature_names):
+        """
+        初始化 TimeSeriesSample 对象。
+
+        Args:
+            features (np.array): 二维数组，形状为 (时间步数, 特征数)。
+            label (int): 样本的标签。
+            timestamp (np.array): 一维数组，表示时间戳。
+            feature_names (list): 特征名称列表。
+        """
         self.features = features
         self.label = label
         self.timestamp = timestamp
@@ -13,14 +32,32 @@ class TimeSeriesSample:
         self.preprocessed_features = None
 
     def preprocess(self, all_feature_names, max_time_steps, window_size, scaler):
-        print(f"原始特征统计: min={self.features.min():.4f}, max={self.features.max():.4f}, mean={self.features.mean():.4f}")
+        """
+        预处理时间序列数据。
+
+        这个方法执行以下步骤：
+        1. 填充缺失特征
+        2. 处理时间步数不足的情况
+        3. 填充NaN值
+        4. 标准化特征
+        5. 创建滑动窗口
+
+        Args:
+            all_feature_names (list): 所有可能的特征名称列表。
+            max_time_steps (int): 期望的最大时间步数。
+            window_size (int): 滑动窗口的大小。
+            scaler (StandardScaler): 用于标准化特征的缩放器。
+        """
+        # 打印原始特征的统计信息
+        # print(f"原始特征统计: min={self.features.min():.4f}, max={self.features.max():.4f}, mean={self.features.mean():.4f}")
         
-        # 创建一个新的特征矩阵，包含所有特征
+        # 创建一个包含所有特征的新矩阵，初始值为NaN
         full_features = np.full((self.features.shape[0], len(all_feature_names)), np.nan)
         for i, feature_name in enumerate(self.feature_names):
             full_features[:, all_feature_names.index(feature_name)] = self.features[:, i]
         
-        print(f"填充NaN后统计: min={np.nanmin(full_features):.4f}, max={np.nanmax(full_features):.4f}, mean={np.nanmean(full_features):.4f}")
+        # 打印填充NaN后的统计信息
+        # print(f"填充NaN后统计: min={np.nanmin(full_features):.4f}, max={np.nanmax(full_features):.4f}, mean={np.nanmean(full_features):.4f}")
 
         # 计算需要在开头填充的行数
         padding_rows = max_time_steps - full_features.shape[0]
@@ -28,10 +65,10 @@ class TimeSeriesSample:
             # 为每个特征计算平均值（忽略NaN）
             feature_means = np.nanmean(full_features, axis=0)
             
-            # 创建填充数组
+            # 创建填充数组，使用特征平均值
             padding = np.tile(feature_means, (padding_rows, 1))
             
-            # 在开头填充特征
+            # 在特征矩阵开头填充
             padded_features = np.vstack((padding, full_features))
             
             # 调整时间戳（每次减少 600 秒，即 10 分钟）
@@ -40,26 +77,24 @@ class TimeSeriesSample:
         else:
             padded_features = full_features
 
-        # print(f"时间步填充后统计: min={np.nanmin(padded_features):.4f}, max={np.nanmax(padded_features):.4f}, mean={np.nanmean(padded_features):.4f}")
-
         # 使用SimpleImputer处理剩余的NaN值
         imputer = SimpleImputer(strategy='mean')
         imputed_features = imputer.fit_transform(padded_features)
-        # 
-        print(f"Imputer后统计: min={imputed_features.min():.4f}, max={imputed_features.max():.4f}, mean={imputed_features.mean():.4f}")
-
-        # 标准化特征
-        scaled_features = scaler.fit_transform(imputed_features)
         
-        # print(f"标准化后统计: min={scaled_features.min():.4f}, max={scaled_features.max():.4f}, mean={scaled_features.mean():.4f}")
+        # 打印Imputer处理后的统计信息
+        # print(f"Imputer后统计: min={imputed_features.min():.4f}, max={imputed_features.max():.4f}, mean={imputed_features.mean():.4f}")
+
+        # 使用StandardScaler标准化特征
+        scaled_features = scaler.fit_transform(imputed_features)
 
         # 创建滑动窗口
         self.preprocessed_features = np.array([scaled_features[i:i+window_size] 
                                                for i in range(len(scaled_features) - window_size + 1)])
         
-        print(f"滑动窗口后统计: min={self.preprocessed_features.min():.4f}, max={self.preprocessed_features.max():.4f}, mean={self.preprocessed_features.mean():.4f}")
+        # 打印滑动窗口处理后的统计信息
+        # print(f"滑动窗口后统计: min={self.preprocessed_features.min():.4f}, max={self.preprocessed_features.max():.4f}, mean={self.preprocessed_features.mean():.4f}")
 
-        # 调整时间戳以匹配预处理后的特征
+        # 调整时间戳以匹配预处理后的特征数量
         self.timestamp = self.timestamp[:len(self.preprocessed_features)]
 
     def get_preprocessed_data(self):
@@ -68,6 +103,12 @@ class TimeSeriesSample:
 
         Returns:
             tuple: (preprocessed_features, label, timestamp)
+                - preprocessed_features: 三维数组，形状为 (样本数, 窗口大小, 特征数)
+                - label: 整数，表示样本的标签
+                - timestamp: 一维数组，表示每个预处理后样本的时间戳
+        
+        Raises:
+            ValueError: 如果数据还未经过预处理
         """
         if self.preprocessed_features is None:
             raise ValueError("数据还未预处理，请先调用 preprocess 方法。")
@@ -80,6 +121,7 @@ class TimeSeriesSample:
 
         Args:
             df (pd.DataFrame): 包含时间序列数据的DataFrame。
+                               应包含'timestamp'列和多个特征列。
             label (int): 样本的标签。
 
         Returns:
@@ -93,6 +135,13 @@ class TimeSeriesSample:
     def to_json(self):
         """
         将 TimeSeriesSample 对象转换为 JSON 格式。
+
+        Returns:
+            str: JSON格式的字符串表示，包含以下键：
+                 - features: 二维列表，原始或预处理后的特征
+                 - label: 整数，样本的标签
+                 - timestamp: 列表，时间戳
+                 - feature_names: 列表，特征名称
         """
         return json.dumps({
             'features': self.preprocessed_features.tolist() if self.preprocessed_features is not None else self.features.tolist(),
@@ -105,6 +154,13 @@ class TimeSeriesSample:
     def from_json(cls, json_str):
         """
         从 JSON 字符串创建 TimeSeriesSample 对象。
+
+        Args:
+            json_str (str): JSON格式的字符串，应包含 'features', 'label', 
+                            'timestamp', 和 'feature_names' 键。
+
+        Returns:
+            TimeSeriesSample: 从JSON创建的对象实例
         """
         data = json.loads(json_str)
         sample = cls(

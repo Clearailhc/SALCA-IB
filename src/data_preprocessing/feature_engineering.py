@@ -1,4 +1,7 @@
+import sys
 import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pandas as pd
 import numpy as np
 from sklearn.feature_selection import SelectKBest, f_regression, mutual_info_regression
@@ -11,14 +14,15 @@ import time
 from datetime import datetime, timedelta
 from scipy import stats
 from time_series_sample import TimeSeriesSample
+from memory.memory import MemorySystem
 
-# 配置 OpenAI API 密钥和基础URL
+# 配置 OpenAI API
 openai.api_key = os.getenv("OPENAI_API_KEY", "infra-ppt-creativity")
-openai.api_base = os.getenv("LLM_API_BASE_URL", "https://api.lingyiwanwu.com/v1")  # 设置基础URL
+openai.api_base = os.getenv("LLM_API_BASE_URL", "https://api.lingyiwanwu.com/v1")
 
 def load_processed_data(pos_data_dir, neg_data_dir):
     """
-    加载处理后的正负样本数据。每个文件被视为一个完整的样本。
+    加载处理后的正负样本数据。
 
     Args:
         pos_data_dir (str): 正样本目录路径。
@@ -26,6 +30,10 @@ def load_processed_data(pos_data_dir, neg_data_dir):
 
     Returns:
         list of TimeSeriesSample: 包含所有样本数据的列表。
+
+    Note:
+        每个CSV文件被视为一个完整的样本。
+        函数会打印加载的样本数量和正负样本比例。
     """
     def load_samples_from_dir(directory, label):
         samples = []
@@ -62,8 +70,11 @@ def calculate_window_size(hours):
 
     Returns:
         int: 对应的时间窗口大小（数据点数量）。
+
+    Note:
+        假设每小时有6个数据点（10分钟间隔）。
     """
-    return int(hours * 6)  # 每小时6个数据点（10分钟间隔）
+    return int(hours * 6)
 
 def preprocess_data(samples, window_size):
     """
@@ -96,7 +107,7 @@ def preprocess_data(samples, window_size):
 
 def select_features_traditional(X, y, n_features=10):
     """
-    使用传统方法进行特征选择。
+    使用传统方法（互信息回归）进行特征选择。
 
     Args:
         X (np.ndarray): 特征矩阵，形状为 (n_samples, n_time_steps, n_features)。
@@ -104,7 +115,9 @@ def select_features_traditional(X, y, n_features=10):
         n_features (int): 要选择的特征数量。
 
     Returns:
-        np.ndarray, list, SelectKBest: 选择后的特征矩阵、选择的特征索引和选择器对象。
+        np.ndarray: 选择后的特征矩阵。
+        list: 选择的特征索���。
+        SelectKBest: 选择器对象。
     """
     # 计算每个样本在时间维度上的平均值
     X_mean = X.mean(axis=1)  # 现在 X_mean 的形状是 (n_samples, n_features)
@@ -121,7 +134,7 @@ def select_features_traditional(X, y, n_features=10):
 
     return X_selected, selected_feature_indices, selector
 
-def select_features_with_llm(X, y, feature_names, memory, window_size):
+def select_features_with_llm(X, y, feature_names, memory_system, window_size):
     """
     使用LLM进行特征选择。
 
@@ -129,24 +142,19 @@ def select_features_with_llm(X, y, feature_names, memory, window_size):
         X (np.ndarray): 特征矩阵，形状为 (n_samples, n_time_steps, n_features)。
         y (np.ndarray): 标签向量。
         feature_names (list): 特征名称列表。
-        memory (dict): 记忆系统。
+        memory_system (MemorySystem): 记忆系统。
         window_size (int): 时间窗口大小。
 
     Returns:
-        np.ndarray, list: 选择后的特征矩阵和选择的特征索引。
+        np.ndarray: 选择后的特征矩阵。
+        list: 选择的特征索引。
     """
-    # print(f"在select_features_with_llm中，X shape: {X.shape}")
-
     # 将所有样本和时间步展平为一个2D数组
     X_flat = X.reshape(-1, X.shape[2])
 
-    # 计算每个特征的方差
+    # 计算每个特征的统计信息
     X_var = X_flat.var(axis=0)
-
-    # 计算每个特征的平均值
     X_mean = X_flat.mean(axis=0)
-
-    # 计算每个特征的最大值和最小值
     X_max = X_flat.max(axis=0)
     X_min = X_flat.min(axis=0)
 
@@ -162,6 +170,12 @@ def select_features_with_llm(X, y, feature_names, memory, window_size):
         for name, mean, var, max_val, min_val in zip(feature_names, X_mean, X_var, X_max, X_min)
     ]
 
+    # 获取历史故障模式
+    historical_patterns = memory_system.get_memory('long_term', 'failure_patterns')
+    
+    # 获取最近的反馈
+    recent_feedback = memory_system.get_memory('short_term', 'feedback')
+
     # 构建提示信息
     prompt = f"""
     我有以下特征及其统计信息：
@@ -170,13 +184,13 @@ def select_features_with_llm(X, y, feature_names, memory, window_size):
 
     时间窗口大小: {window_size}
 
-    历史模式：
-    {json.dumps(memory.get('long_term_memory', {}).get('historical_patterns', []), ensure_ascii=False)}
+    历史故障模式：
+    {json.dumps(historical_patterns, ensure_ascii=False, indent=2)}
 
     最近的反馈：
-    {json.dumps(memory.get('short_term_memory', {}).get('recent_feedback', []), ensure_ascii=False)}
+    {json.dumps(recent_feedback, ensure_ascii=False, indent=2)}
 
-    请基于这些信息，选择对预测目标变量最有用的特征。特征数量不固定，由你根据数据特征和历史反馈自主决定。
+    请基于这些信息，选择对预测目标变量最有用的特征。特征数量不固定，由你根据数据特征、历史故障模式和最近反馈自主决定。
     请解释你的选择理由，并说明为什么选择这个数量的特征。
 
     请按以下格式返回你的选择和解释：
@@ -188,15 +202,6 @@ def select_features_with_llm(X, y, feature_names, memory, window_size):
 
     解释:
     你的解释文本。
-
-    回复格式：
-    选择的特征：
-    - feature1
-    - feature2
-    - ...
-
-    解释：你的解释文本。
-
     """
 
     # 调用 LLM 获取建议
@@ -233,8 +238,8 @@ def select_features_with_llm(X, y, feature_names, memory, window_size):
     X_selected = X[:, :, selected_indices]
 
     # 更新短期记忆
-    memory['short_term_memory']['recent_features'] = selected_features
-    memory['short_term_memory']['recent_feedback'].append(explanation)
+    memory_system.update_memory('short_term', 'recent_features', selected_features)
+    memory_system.update_memory('short_term', 'feature_selection_explanation', explanation)
 
     print(f"LLM 选择了 {len(selected_features)} 个特征。")
     print(f"选择的特征: {', '.join(selected_features)}")
@@ -250,7 +255,8 @@ def parse_llm_output(llm_output):
         llm_output (str): LLM的输出文本。
 
     Returns:
-        list, str: 择的特征名称列表和选择理由。
+        list: 选择的特征名称列表。
+        str: 选择理由。
     """
     selected_features = []
     explanation = ""
@@ -273,32 +279,36 @@ def parse_llm_output(llm_output):
 
     return selected_features, explanation.strip()
 
-def select_window_size_with_llm(memory):
+def select_window_size_with_llm(memory_system):
     """
     利用LLM根据记忆自动选择时间窗口大小。
 
     Args:
-        memory (dict): 记忆系统。
+        memory_system (MemorySystem): 记忆系统。
 
     Returns:
         float: 选择的时间窗口大小（小时）。
     """
-    historical_patterns = memory.get('long_term_memory', {}).get('historical_patterns', [])
-    recent_feedback = memory.get('short_term_memory', {}).get('recent_feedback', [])
+    historical_patterns = memory_system.get_memory('long_term', 'failure_patterns')
+    recent_feedback = memory_system.get_memory('short_term', 'feedback')
+    model_performance = memory_system.get_memory('long_term', 'model_performance')
     
     prompt = f"""
     根据以下信息，选择一个合适的时间窗口大小（以小时为单位）：
 
-    历史模式：
+    历史故障模式：
     {json.dumps(historical_patterns, ensure_ascii=False, indent=2)}
 
     最近的反馈：
     {json.dumps(recent_feedback, ensure_ascii=False, indent=2)}
 
+    模型性能：
+    {json.dumps(model_performance, ensure_ascii=False, indent=2)}
+
     请考虑以下因素：
-    1. 历史模式中出现的时间相关特征
+    1. 历史故障模式中提到的典型持续时间和推荐窗口
     2. 最近反馈中提到的时间窗口建议
-    3. 故障模式的典型持续时间
+    3. 不同模型在不同窗口大小下的性能表现
     4. 数据的采样频率（每10分钟一个数据点）
     5. 原始数据最多只采集了3小时，因此时间窗口不能超过3小时
 
@@ -330,6 +340,10 @@ def select_window_size_with_llm(memory):
     llm_output = response.choices[0].message.content
     window_size, explanation = parse_window_size_output(llm_output)
 
+    # 更新短期记忆
+    memory_system.update_memory('short_term', 'window_size', window_size)
+    memory_system.update_memory('short_term', 'window_size_explanation', explanation)
+
     print(f"LLM建议的时间窗口大小：{window_size}小时")
     print(f"解释：{explanation}")
 
@@ -337,13 +351,14 @@ def select_window_size_with_llm(memory):
 
 def parse_window_size_output(llm_output):
     """
-    解析LLM的出，提取时间窗口大小和解释。
+    解析LLM的输出，提取时间窗口大小和解释。
 
     Args:
         llm_output (str): LLM的输出文本。
 
     Returns:
-        float, str: 时间窗口大小（小时）和解释。
+        float: 时间窗口大小（小时）。
+        str: 解释。
     """
     lines = llm_output.split('\n')
     window_size = 1.5  # 默认值
@@ -360,23 +375,38 @@ def parse_window_size_output(llm_output):
 
     return window_size, explanation
 
-def select_and_save_features(memory):
+def select_and_save_features(memory_path=None):
     """
     执行特征选择和保存流程。
 
     Args:
-        memory (dict): 记忆系统。
+        memory_path (str, optional): 记忆系统的JSON文件路径。
+                                     如果未提供，将使用默认路径。
+
+    Note:
+        这个函数整合了整个特征工程流程，包括数据加载、预处理、特征选择和保存。
     """
     processed_data_dir = "./data/raw/processed/"
     pos_data_dir = os.path.join(processed_data_dir, "pos")
     neg_data_dir = os.path.join(processed_data_dir, "neg")
     output_selected_data = os.path.join(processed_data_dir, "selected_features.jsonl")
 
+    # 使用提供的路径或默认路径加载记忆系统
+    default_memory_path = './src/memory/memory_test.json'
+    memory_path = memory_path or default_memory_path
+    
+    try:
+        memory_system = MemorySystem.load_from_json(memory_path)
+        print(f"成功从 {memory_path} 加载记忆系统")
+    except FileNotFoundError:
+        print(f"警告：未找到记忆文件 {memory_path}，将创建新的记忆系统")
+        memory_system = MemorySystem()
+
     print("加载数据...")
     samples = load_processed_data(pos_data_dir, neg_data_dir)
 
     print("使用LLM选择时间窗口大小...")
-    window_hours = select_window_size_with_llm(memory)
+    window_hours = select_window_size_with_llm(memory_system)
     window_size = calculate_window_size(window_hours)
 
     print(f"使用 {window_hours:.1f} 小时的时间窗口（{window_size} 个数据点）")
@@ -389,7 +419,7 @@ def select_and_save_features(memory):
     y = np.array([sample.label for sample in preprocessed_samples])
 
     print("使用LLM进行特征选择...")
-    X_selected, selected_feature_indices = select_features_with_llm(X, y, all_feature_names, memory, window_size)
+    X_selected, selected_feature_indices = select_features_with_llm(X, y, all_feature_names, memory_system, window_size)
 
     if X_selected is None:
         print("LLM特征选择失败，使用传统方法...")
@@ -404,7 +434,19 @@ def select_and_save_features(memory):
     save_selected_features(preprocessed_samples, selected_feature_indices, selected_feature_names, 
                            scaler, selector, output_selected_data, window_size)
 
-    print("特征工程完成。选择的特征已保存至", output_selected_data)
+    print("特征选择完成。选择的特征已保存至", output_selected_data)
+
+    # 更新记忆系统
+    memory_system.update_memory('short_term', 'data_characteristics', {
+        'window_size': window_size,
+        'selected_features': selected_feature_names
+    })
+    memory_system.save_to_json(memory_path)
+    print(f"更新后的记忆系统已保存至 {memory_path}")
+
+    # 执行记忆整合
+    memory_system.consolidate_memory()
+    print("记忆整合完成")
 
 def save_selected_features(samples, selected_feature_indices, selected_feature_names, scaler, selector, output_path, window_size):
     """
@@ -418,6 +460,9 @@ def save_selected_features(samples, selected_feature_indices, selected_feature_n
         selector (SelectKBest or None): 特征选择器对象。
         output_path (str): 输出路径。
         window_size (int): 时间窗口大小（数据点数量）。
+
+    Note:
+        保存的内容包括样本数据（JSONL格式）、metadata、scaler和selector（如果有）。
     """
     # 创建输出目录（如果不存在）
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -470,6 +515,9 @@ def load_selected_features(input_path):
     Returns:
         list of dict: 重构后的样本列表。
         dict: 元数据，包含窗口大小和选择的特征。
+
+    Note:
+        加载的数据包括样本特征、标签和时间戳。
     """
     # 加载CSV数据
     df = pd.read_csv(input_path)
@@ -496,84 +544,7 @@ def load_selected_features(input_path):
     return samples, metadata
 
 if __name__ == "__main__":
-    # 定义记忆系统
-    memory_system = {
-        'long_term_memory': {
-            'historical_patterns': [
-                {
-                    'pattern_id': 1,
-                    'description': '高偏置电流导致的设备过热故障模式',
-                    'features': [
-                        'ib_device_stat_bias_current_c_0',
-                        'ib_device_stat_bias_current_c_1',
-                        'ib_device_stat_bias_current_c_2',
-                        'ib_device_stat_bias_current_c_3',
-                        'ib_device_stat_temperature'
-                    ],
-                    'typical_duration': '1-3小时',
-                    'occurrence_rate': 0.04,
-                    'recommended_window': '2-3小时'
-                },
-                {
-                    'pattern_id': 2,
-                    'description': '接收功率异常波动引发的号质量下降',
-                    'features': [
-                        'ib_device_stat_rx_power_current_c_0',
-                        'ib_device_stat_rx_power_current_c_1',
-                        'ib_device_stat_rx_power_current_c_2',
-                        'ib_device_stat_rx_power_current_c_3'
-                    ],
-                    'typical_duration': '1-2小时',
-                    'occurrence_rate': 0.03,
-                    'recommended_window': '1.5-2小时'
-                },
-                {
-                    'pattern_id': 3,
-                    'description': '发送功率过高导致的信号干扰问题',
-                    'features': [
-                        'ib_device_stat_tx_power_current_c_0',
-                        'ib_device_stat_tx_power_current_c_1',
-                        'ib_device_stat_tx_power_current_c_2',
-                        'ib_device_stat_tx_power_current_c_3'
-                    ],
-                    'typical_duration': '30分钟-2小时',
-                    'occurrence_rate': 0.02,
-                    'recommended_window': '1-1.5小时'
-                }
-            ],
-            'model_performance': {
-                'xgboost': {'accuracy': 0.82, 'f1_score': 0.78, 'optimal_window': '2.5小时'},
-                'lstm': {'accuracy': 0.85, 'f1_score': 0.80, 'optimal_window': '2.5小时'},
-                'gru': {'accuracy': 0.84, 'f1_score': 0.79, 'optimal_window': '2.5小时'},
-                'cnn': {'accuracy': 0.80, 'f1_score': 0.75, 'optimal_window': '2小时'},
-                'transformer_encoder': {'accuracy': 0.86, 'f1_score': 0.81, 'optimal_window': '2.5小时'}
-            }
-        },
-        'short_term_memory': {
-            'recent_features': [
-                'ib_device_stat_bias_current_c_0',
-                'ib_device_stat_bias_current_c_1',
-                'ib_device_stat_bias_current_c_2',
-                'ib_device_stat_bias_current_c_3',
-                'ib_device_stat_rx_power_current_c_0',
-                'ib_device_stat_tx_power_current_c_0',
-                'ib_device_stat_temperature'
-            ],
-            'recent_feedback': [
-                '最近的实验表明，2.5小时的时间窗口在捕捉大多数故障模式方面表现良好。',
-                '对于某些快速变化的特征，如接收功率波动，1.5-2小时的窗口可能更合适。',
-                '考虑到数据采集限制，3小时的窗口能够捕捉到最长的可能趋势。',
-                '1小时的窗口在捕捉短期波动方面表现出色，特别是对于发送功率相关的问题。',
-                '综合考虑各种故障模式，2-2.5小时的窗口似乎能够在捕捉短期波动和长期趋势之间取得良好的平衡。'
-            ],
-            'window_size_history': [
-                {'timestamp': '2023-06-01', 'window_size': 1.5, 'performance': 'Good'},
-                {'timestamp': '2023-06-15', 'window_size': 2.0, 'performance': 'Better'},
-                {'timestamp': '2023-07-01', 'window_size': 2.5, 'performance': 'Best so far'},
-                {'timestamp': '2023-07-15', 'window_size': 3.0, 'performance': 'Good, but at the limit'}
-            ]
-        }
-    }
-
     # 执行特征选择和保存
-    select_and_save_features(memory_system)
+    # 可以选择性地传入记忆文件路径
+    # select_and_save_features('./path/to/custom/memory.json')
+    select_and_save_features()

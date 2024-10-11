@@ -1,350 +1,126 @@
-from collections import deque
-from datetime import datetime, date
 import json
+from collections import defaultdict, deque
+from datetime import datetime
+from typing import Dict, List, Any, Optional, Union
 
-class ShortTermMemory:
-    """短期记忆类,用于存储最近的数据和事件"""
-
-    def __init__(self, max_size=100):
-        """
-        初始化短期记忆
-        :param max_size: 每种类型数据的最大存储量
-        """
+class FlexibleMemory:
+    def __init__(self, name: str, max_size: int = 100):
+        self.name = name
         self.max_size = max_size
-        # 使用deque存储各种类型的最近数据,限制最大长度
-        self.recent_predictions = deque(maxlen=max_size)
-        self.recent_evaluations = deque(maxlen=max_size)
-        self.recent_feedback = deque(maxlen=max_size)
-        self.recent_data_characteristics = deque(maxlen=max_size)
-        self.recent_external_events = deque(maxlen=max_size)
-        self.recent_model_performances = deque(maxlen=max_size)
+        self.memory: Dict[str, deque] = defaultdict(lambda: deque(maxlen=max_size))
 
-    def add_prediction(self, prediction):
-        """
-        添加新的预测结果
-        :param prediction: 预测结果
-        """
-        self.recent_predictions.append({
+    def add_data(self, category: str, data: Any) -> None:
+        if category not in self.memory:
+            print(f"[{self.name}] 创建新的记忆类型: {category}")
+        
+        self.memory[category].append({
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'prediction': prediction
+            'data': data
         })
+        print(f"[{self.name}] {category} 现在包含 {len(self.memory[category])} 条记录")
 
-    def add_evaluation(self, evaluation):
-        """
-        添加新的评估结果
-        :param evaluation: 评估结果
-        """
-        self.recent_evaluations.append({
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'evaluation': evaluation
-        })
+    def get_data(self, category: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        if category not in self.memory:
+            print(f"[{self.name}] 警告: 尝试获取不存在的记忆类型 {category}")
+            return []
+        
+        data = list(self.memory[category])
+        if limit is not None:
+            data = data[-limit:]
+        
+        print(f"[{self.name}] 从 {category} 获取了 {len(data)} 条记录")
+        return data
 
-    def add_feedback(self, feedback):
-        """
-        添加新的反馈信息
-        :param feedback: 反馈信息
-        """
-        self.recent_feedback.append({
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'feedback': feedback
-        })
-
-    def add_data_characteristics(self, characteristics):
-        """
-        添加新的数据特征信息
-        :param characteristics: 数据特征信息
-        """
-        self.recent_data_characteristics.append({
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'characteristics': characteristics
-        })
-
-    def add_external_event(self, event):
-        """
-        添加新的外部事件信息
-        :param event: 外部事件信息
-        """
-        self.recent_external_events.append({
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'event': event
-        })
-
-    def add_model_performance(self, performance):
-        """
-        添加新的模型性能信息
-        :param performance: 模型性能信息
-        """
-        self.recent_model_performances.append({
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'performance': performance
-        })
-
-    def get_recent_data(self, data_type, limit=None):
-        """
-        获取指定类型的最近数据
-        :param data_type: 数据类型
-        :param limit: 返回数据的数量限制
-        :return: 最近的数据列表
-        """
-        data = getattr(self, f'recent_{data_type}', None)
-        if data is None:
-            raise ValueError(f"无效的数据类型: {data_type}")
-        return list(data)[:limit] if limit else list(data)
-
-class LongTermMemory:
-    """长期记忆类,用于存储历史模式和长期趋势"""
-
-    def __init__(self, max_patterns=100):
-        """
-        初始化长期记忆
-        :param max_patterns: 存储的最大模式数量
-        """
-        self.max_patterns = max_patterns
-        self.historical_failure_patterns = []
-        self.successful_model_configurations = {}
-        self.long_term_performance_trends = []
-        self.network_feature_distribution_shifts = []
-        self.external_factor_impacts = []
-        self.model_performance_history = {}
-
-    def add_failure_pattern(self, pattern):
-        """
-        添加新的失败模式
-        :param pattern: 失败模式信息
-        """
-        if len(self.historical_failure_patterns) >= self.max_patterns:
-            self.historical_failure_patterns.pop(0)
-        self.historical_failure_patterns.append({
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'pattern': pattern
-        })
-
-    def add_model_configuration(self, model_name, configuration):
-        """
-        添加新的模型配置
-        :param model_name: 模型名称
-        :param configuration: 模型配置信息
-        """
-        self.successful_model_configurations[model_name] = {
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'configuration': configuration
-        }
-
-    def add_performance_trend(self, trend):
-        """
-        添加新的性能趋势
-        :param trend: 性能趋势信息
-        """
-        self.long_term_performance_trends.append({
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'trend': trend
-        })
-
-    def add_feature_distribution_shift(self, shift):
-        """
-        添加新的特征分布变化
-        :param shift: 特征分布变化信息
-        """
-        self.network_feature_distribution_shifts.append({
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'shift': shift
-        })
-
-    def add_external_factor_impact(self, impact):
-        """
-        添加新的外部因素影响
-        :param impact: 外部因素影响信息
-        """
-        self.external_factor_impacts.append({
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'impact': impact
-        })
-
-    def add_model_performance(self, model_name, performance):
-        """
-        添加新的模型性能
-        :param model_name: 模型名称
-        :param performance: 模型性能信息
-        """
-        if model_name not in self.model_performance_history:
-            self.model_performance_history[model_name] = []
-        self.model_performance_history[model_name].append({
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'performance': performance
-        })
-
-    def get_historical_data(self, data_type, limit=None):
-        """
-        获取指定类型的历史数据
-        :param data_type: 数据类型
-        :param limit: 返回数据的数量限制
-        :return: 历史数据列表或字典
-        """
-        data = getattr(self, data_type, None)
-        if data is None:
-            raise ValueError(f"无效的数据类型: {data_type}")
-        return data[:limit] if limit else data
+    def get_categories(self) -> List[str]:
+        return list(self.memory.keys())
 
 class MemorySystem:
-    """整合短期和长期记忆的记忆系统"""
+    def __init__(self, short_term_size: int = 100, long_term_size: int = 1000):
+        self.short_term = FlexibleMemory("短期记忆", max_size=short_term_size)
+        self.long_term = FlexibleMemory("长期记忆", max_size=long_term_size)
 
-    def __init__(self, short_term_size=100, long_term_patterns=1000):
-        """
-        初始化记忆系统
-        :param short_term_size: 短期记忆的最大容量
-        :param long_term_patterns: 长期记忆中存储的最大模式数量
-        """
-        self.short_term = ShortTermMemory(max_size=short_term_size)
-        self.long_term = LongTermMemory(max_patterns=long_term_patterns)
-
-    def update_short_term(self, memory_type, data):
-        """
-        更新短期记忆
-        :param memory_type: 记忆类型
-        :param data: 要添加的数据
-        """
-        method_name = f'add_{memory_type}'
-        if hasattr(self.short_term, method_name):
-            getattr(self.short_term, method_name)(data)
+    def update_memory(self, memory_type: str, category: str, data: Any) -> None:
+        memory = self._get_memory_by_type(memory_type)
+        if memory:
+            memory.add_data(category, data)
         else:
-            raise ValueError(f"无效的短期记忆类型: {memory_type}")
+            print(f"错误: 无效的记忆类型: {memory_type}")
 
-    def update_long_term(self, memory_type, data):
-        """
-        更新长期记忆
-        :param memory_type: 记忆类型
-        :param data: 要添加的数据
-        """
-        method_name = f'add_{memory_type}'
-        if hasattr(self.long_term, method_name):
-            getattr(self.long_term, method_name)(data)
+    def get_memory(self, memory_type: str, category: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        memory = self._get_memory_by_type(memory_type)
+        return memory.get_data(category, limit) if memory else []
+
+    def get_memory_categories(self, memory_type: str) -> List[str]:
+        memory = self._get_memory_by_type(memory_type)
+        return memory.get_categories() if memory else []
+
+    def _get_memory_by_type(self, memory_type: str) -> Optional[FlexibleMemory]:
+        if memory_type == 'short_term':
+            return self.short_term
+        elif memory_type == 'long_term':
+            return self.long_term
         else:
-            raise ValueError(f"无效的长期记忆类型: {memory_type}")
+            print(f"错误: 无效的记忆类型: {memory_type}")
+            return None
 
-    def update_model_performance(self, model_name, performance):
-        """
-        更新模型性能到短期和长期记忆
-        :param model_name: 模型名称
-        :param performance: 性能数据
-        """
-        # 更新短期记忆
-        self.short_term.add_model_performance({model_name: performance})
+    def consolidate_memory(self) -> None:
+        print("开始记忆整合过程")
+        for category in self.short_term.get_categories():
+            short_term_data = self.short_term.get_data(category)
+            for item in short_term_data:
+                if 'important' in str(item['data']).lower():
+                    self.long_term.add_data(category, item['data'])
+        print("记忆整合完成")
+
+    def get_relevant_memory(self, context: List[str], memory_type: str = 'both') -> Dict[str, Dict[str, List[Dict[str, Any]]]]:
+        relevant_memory = {'short_term': {}, 'long_term': {}}
         
-        # 更新长期记忆
-        self.long_term.add_model_performance(model_name, performance)
+        def search_memory(memory: FlexibleMemory, memory_type: str) -> None:
+            for category in memory.get_categories():
+                data = memory.get_data(category)
+                relevant_data = [
+                    item for item in data 
+                    if any(keyword in str(item['data']).lower() for keyword in context)
+                ]
+                if relevant_data:
+                    relevant_memory[memory_type][category] = relevant_data
 
-    def get_short_term_memory(self, memory_type, limit=None):
-        """
-        获取指定类型的最近短期记忆
-        :param memory_type: 记忆类型
-        :param limit: 返回数据的数量限制
-        :return: 最近的短期记忆列表
-        """
-        return self.short_term.get_recent_data(memory_type, limit)
+        if memory_type in ['short_term', 'both']:
+            search_memory(self.short_term, 'short_term')
+        if memory_type in ['long_term', 'both']:
+            search_memory(self.long_term, 'long_term')
 
-    def get_long_term_memory(self, memory_type, limit=None):
-        """
-        获取指定类型的历史长期记忆
-        :param memory_type: 记忆类型
-        :param limit: 返回数据的数量限制
-        :return: 历史长期记忆列表或字典
-        """
-        return self.long_term.get_historical_data(memory_type, limit)
+        return relevant_memory
 
-    def consolidate_memory(self):
-        """
-        将短期记忆整合到长期记忆中
-        这里实现了一个简单的整合逻辑,实际应用中可能需要更复杂的处理
-        """
-        for feedback in self.short_term.recent_feedback:
-            if 'important' in feedback['feedback'].lower():
-                self.long_term.add_failure_pattern(feedback['feedback'])
-
-        # 可以添加更多的整合逻辑,如性能趋势、特征分布变化等
-
-    def get_relevant_memory(self, context):
-        """
-        根据给定的上下文获取相关的记忆
-        :param context: 上下文关键词列表
-        :return: 包含相关短期和长期记忆的字典
-        """
-        relevant_memory = {
-            'short_term': {},
-            'long_term': {}
-        }
-        
-        # 从短期记忆中获取相关信息
-        for attr in ['predictions', 'evaluations', 'feedback', 'data_characteristics', 'external_events', 'model_performances']:
-            data = self.short_term.get_recent_data(attr)
-            relevant_memory['short_term'][attr] = [
-                item for item in data if any(keyword in str(item) for keyword in context)
-            ]
-
-        # 从长期记忆中获取相关信息
-        for attr in ['historical_failure_patterns', 'successful_model_configurations', 'long_term_performance_trends', 'network_feature_distribution_shifts', 'external_factor_impacts', 'model_performance_history']:
-            data = self.long_term.get_historical_data(attr)
-            relevant_memory['long_term'][attr] = [
-                item for item in data if any(keyword in str(item) for keyword in context)
-            ]
-
-        return json.loads(json.dumps(relevant_memory, default=json_serializable))
-
-    def save_to_json(self, file_path):
-        """
-        将整个记忆系统保存为JSON文件
-        :param file_path: 保存的文件路径
-        """
+    def save_to_json(self, file_path: str) -> None:
         memory_data = {
-            'short_term': {
-                attr: list(getattr(self.short_term, attr))
-                for attr in ['recent_predictions', 'recent_evaluations', 'recent_feedback', 'recent_data_characteristics', 'recent_external_events', 'recent_model_performances']
-            },
-            'long_term': {
-                attr: getattr(self.long_term, attr)
-                for attr in ['historical_failure_patterns', 'successful_model_configurations', 'long_term_performance_trends', 'network_feature_distribution_shifts', 'external_factor_impacts', 'model_performance_history']
-            }
+            'short_term': {k: list(v) for k, v in self.short_term.memory.items()},
+            'long_term': {k: list(v) for k, v in self.long_term.memory.items()}
         }
         with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(memory_data, f, default=json_serializable, ensure_ascii=False, indent=2)
+            json.dump(memory_data, f, ensure_ascii=False, indent=2, default=json_serializable)
+        print(f"记忆系统已保存到 {file_path}")
 
     @classmethod
-    def load_from_json(cls, file_path):
-        """
-        从JSON文件加载记忆系统
-        :param file_path: JSON文件路径
-        :return: 加载的MemorySystem实例
-        """
+    def load_from_json(cls, file_path: str) -> 'MemorySystem':
         with open(file_path, 'r', encoding='utf-8') as f:
             memory_data = json.load(f)
         
         memory_system = cls()
+        for term in ['short_term', 'long_term']:
+            for category, data in memory_data[term].items():
+                for item in data:
+                    getattr(memory_system, term).add_data(category, item['data'])
         
-        for attr, data in memory_data['short_term'].items():
-            setattr(memory_system.short_term, attr, deque(data, maxlen=memory_system.short_term.max_size))
-        
-        for attr, data in memory_data['long_term'].items():
-            setattr(memory_system.long_term, attr, data)
-        
+        print(f"记忆系统已从 {file_path} 加载")
         return memory_system
 
-def json_serializable(obj):
+def json_serializable(obj: Any) -> Union[str, TypeError]:
     if isinstance(obj, datetime):
-        return obj.strftime('%Y-%m-%d %H:%M:%S')
-    elif isinstance(obj, date):
-        return obj.strftime('%Y-%m-%d')
-    elif isinstance(obj, deque):
-        return list(obj)
-    elif isinstance(obj, set):
-        return list(obj)
+        return obj.isoformat()
     raise TypeError(f"Type {type(obj)} not serializable")
 
-def deque_to_list(obj):
-    if isinstance(obj, deque):
-        return list(obj)
-    return obj
-
-if __name__ == "__main__":
-    # 创建MemorySystem实例
+def main():
     memory_system = MemorySystem()
 
     # 添加长期记忆
@@ -392,7 +168,7 @@ if __name__ == "__main__":
     ]
 
     for pattern in historical_patterns:
-        memory_system.update_long_term('failure_pattern', pattern)
+        memory_system.update_memory('long_term', 'failure_patterns', pattern)
 
     model_performance = {
         'xgboost': {'accuracy': 0.82, 'precision': 0.80, 'recall': 0.75, 'f1_score': 0.78, 'optimal_window': '2.5小时'},
@@ -403,17 +179,35 @@ if __name__ == "__main__":
     }
 
     for model, performance in model_performance.items():
-        memory_system.update_model_performance(model, performance)
+        memory_system.update_memory('long_term', 'model_performance', {model: performance})
 
     # 添加短期记忆
     recent_predictions = [
-        {'timestamp': '2023-08-01 10:00:00', 'prediction': 0.85},
-        {'timestamp': '2023-08-01 10:10:00', 'prediction': 0.78},
-        {'timestamp': '2023-08-01 10:20:00', 'prediction': 0.92}
+        {
+            'model': 'XGBoost',
+            'prediction': 0.85,
+            'actual': 1,
+            'features': ['ib_device_stat_bias_current_c_0', 'ib_device_stat_temperature'],
+            'performance': {'accuracy': 0.82, 'precision': 0.80, 'recall': 0.75, 'f1_score': 0.78}
+        },
+        {
+            'model': 'LSTM',
+            'prediction': 0.78,
+            'actual': 0,
+            'features': ['ib_device_stat_rx_power_current_c_0', 'ib_device_stat_rx_power_current_c_1'],
+            'performance': {'accuracy': 0.85, 'precision': 0.83, 'recall': 0.78, 'f1_score': 0.80}
+        },
+        {
+            'model': 'Transformer',
+            'prediction': 0.92,
+            'actual': 1,
+            'features': ['ib_device_stat_tx_power_current_c_0', 'ib_device_stat_tx_power_current_c_1'],
+            'performance': {'accuracy': 0.86, 'precision': 0.84, 'recall': 0.79, 'f1_score': 0.81}
+        }
     ]
 
     for prediction in recent_predictions:
-        memory_system.update_short_term('prediction', prediction)
+        memory_system.update_memory('short_term', 'predictions', prediction)
 
     recent_feedback = [
         '最近的实验表明，2.5小时的时间窗口在捕捉大多数故障模式方面表现良好。',
@@ -423,28 +217,29 @@ if __name__ == "__main__":
     ]
 
     for feedback in recent_feedback:
-        memory_system.update_short_term('feedback', feedback)
+        memory_system.update_memory('short_term', 'feedback', feedback)
+
+    # 测试记忆检索
+    print("短期记忆类别:", memory_system.get_memory_categories('short_term'))
+    print("长期记忆类别:", memory_system.get_memory_categories('long_term'))
+
+    print("\n短期预测:", memory_system.get_memory('short_term', 'predictions'))
+    print("\n长期故障模式:", memory_system.get_memory('long_term', 'failure_patterns'))
 
     # 测试记忆整合
     memory_system.consolidate_memory()
 
-    # 测试获取相关记忆
-    context = ['performance', 'f1_score', 'precision', 'recall']
+    # 测试相关记忆检索
+    context = ['performance', 'window', 'model']
     relevant_memory = memory_system.get_relevant_memory(context)
+    print("\n相关记忆:", json.dumps(relevant_memory, indent=2, ensure_ascii=False))
 
-    print("相关记忆:")
-    print(json.dumps(relevant_memory, indent=2, ensure_ascii=False))
+    # 保存和加载测试
+    memory_system.save_to_json('./src/memory/memory_test.json')
+    loaded_memory = MemorySystem.load_from_json('./src/memory/memory_test.json')
 
-    # 保存记忆系统到JSON文件
-    memory_system.save_to_json('./src/memory/memory_example.json')
+    print("\n加载后的短期记忆类别:", loaded_memory.get_memory_categories('short_term'))
+    print("加载后的长期记忆类别:", loaded_memory.get_memory_categories('long_term'))
 
-    # 从JSON文件加载记忆系统
-    loaded_memory_system = MemorySystem.load_from_json('./src/memory/memory_example.json')
-
-    # 验证加载的记忆
-    print("\n加载后的短期记忆:")
-    # 在打印之前,先将 deque 转换为列表
-    short_term_dict = {k: deque_to_list(v) for k, v in loaded_memory_system.short_term.__dict__.items()}
-    print(json.dumps(short_term_dict, indent=2, ensure_ascii=False))
-    print("\n加载后的长期记忆:")
-    print(json.dumps(loaded_memory_system.long_term.__dict__, indent=2, ensure_ascii=False))
+if __name__ == "__main__":
+    main()
