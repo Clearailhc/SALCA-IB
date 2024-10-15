@@ -356,8 +356,8 @@ class MemorySystem:
                     for subcategory, subdata in subcategories.items():
                         data[memory_type][category][subcategory] = [item['data'] for item in subdata]
         
-        with open(file_path, 'w') as f:
-            json.dump(data, f, indent=2)
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
     @classmethod
     def load_from_json(cls, file_path):

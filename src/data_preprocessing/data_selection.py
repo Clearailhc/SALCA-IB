@@ -73,7 +73,7 @@ def select_training_data_traditional_timestamp(data, start_time, end_time, train
         data (pd.DataFrame): 原始数据集，包含 'timestamp' 和 'label' 列。
         start_time (str or pd.Timestamp): 数据选择的开始时间。
         end_time (str or pd.Timestamp): 数据选择的结束时间。
-        train_ratio (float): 训练集占选定数据的比例，���认为0.8。
+        train_ratio (float): 训练集占选定数据的比例，认为0.8。
         random_state (int): 随机种子，用于可重复的随机划分。
 
     Returns:
@@ -213,21 +213,28 @@ def select_training_data_with_llm_timestamp(samples, memory_system):
     train_samples, test_samples = train_test_split(selected_samples, train_size=train_ratio, random_state=42)
 
     # 更新短期记忆
-    memory_system.update_memory('short_term', 'recent_training_selection', 'time_period', {
-        '开始时间': datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S'),
-        '结束时间': datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
-    })
-    memory_system.update_memory('short_term', 'recent_training_selection', 'train_ratio', train_ratio)
-    memory_system.update_memory('short_term', 'feedback', 'explanation', explanation)
+    selection_info = {
+        'time_period': {
+            '开始时间': datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S'),
+            '结束时间': datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
+        },
+        'train_ratio': train_ratio,
+        'sample_counts': {
+            '总样本数': len(samples),
+            '训练集样本数': len(train_samples),
+            '测试集样本数': len(test_samples)
+        },
+        'explanation': explanation
+    }
 
-    print(f"选择的时间段: {datetime.fromtimestamp(start_time)} 到 {datetime.fromtimestamp(end_time)}")
-    print(f"训练集比例: {train_ratio}")
-    print(f"解释：{explanation}")
+    memory_system.update_memory('short_term', 'recent_training_selection', 'data_selection', selection_info)
 
-    # 打印总样本数、训练集样本数和测试集样本数
-    print(f"总样本数: {len(selected_samples)}")
-    print(f"训练集样本数: {len(train_samples)}")
-    print(f"测试集样本数: {len(test_samples)}")
+    print(f"选择的时间段: {selection_info['time_period']['开始时间']} 到 {selection_info['time_period']['结束时间']}")
+    print(f"训练集比例: {selection_info['train_ratio']}")
+    print(f"解释：{selection_info['explanation']}")
+    print(f"总样本数: {selection_info['sample_counts']['总样本数']}")
+    print(f"训练集样本数: {selection_info['sample_counts']['训练集样本数']}")
+    print(f"测试集样本数: {selection_info['sample_counts']['测试集样本数']}")
 
     return train_samples, test_samples
 
@@ -289,7 +296,7 @@ def select_training_data_traditional(X, y, method='f_regression', k=10):
         k (int): 选择的特征数量。
 
     Returns:
-        np.ndarray, list, object: 选择后的特征矩阵、选择的特征索引和选择器对象。
+        np.ndarray, list, object: 选择后特征矩阵、选择的特征索引和选择器对象。
     """
     from sklearn.feature_selection import SelectKBest, f_regression
 
@@ -357,6 +364,9 @@ def select_and_save_training_data(memory_path=None):
     save_selected_training_data(train_samples, test_samples, output_dir)
 
     print("训练数据选择完成。")
+
+    # 整合记忆
+    memory_system.consolidate_memory()
 
     # 保存更新后的记忆
     memory_system.save_to_json(memory_path)
