@@ -343,32 +343,41 @@ class MemorySystem:
 
         return relevant_memory
 
-    def save_to_json(self, file_path: str) -> None:
-        memory_data = {
-            'short_term': {category: {subcategory: list(data) for subcategory, data in subcategories.items()}
-                           for category, subcategories in self.short_term.memory.items()},
-            'long_term': {category: {subcategory: list(data) for subcategory, data in subcategories.items()}
-                          for category, subcategories in self.long_term.memory.items()}
+    def save_to_json(self, file_path):
+        data = {
+            'short_term': {},
+            'long_term': {}
         }
+        for memory_type in ['short_term', 'long_term']:
+            memory = self._get_memory_by_type(memory_type)
+            if memory:
+                for category, subcategories in memory.memory.items():
+                    data[memory_type][category] = {}
+                    for subcategory, subdata in subcategories.items():
+                        data[memory_type][category][subcategory] = [item['data'] for item in subdata]
         
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(memory_data, f, ensure_ascii=False, indent=2, default=self._json_serializable)
-        
-        print(f"记忆系统已保存到 {file_path}")
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=2)
 
     @classmethod
-    def load_from_json(cls, file_path: str) -> 'MemorySystem':
-        with open(file_path, 'r', encoding='utf-8') as f:
-            memory_data = json.load(f)
+    def load_from_json(cls, file_path):
+        with open(file_path, 'r') as f:
+            data = json.load(f)
         
         memory_system = cls()
-        for term in ['short_term', 'long_term']:
-            for category, subcategories in memory_data[term].items():
-                for subcategory, data in subcategories.items():
-                    for item in data:
-                        memory_system.update_memory(term, category, subcategory, item['data'])
         
-        print(f"记忆系统已从 {file_path} 加载")
+        for memory_type in ['short_term', 'long_term']:
+            if memory_type in data:
+                for category, subcategories in data[memory_type].items():
+                    if isinstance(subcategories, dict):
+                        for subcategory, subdata in subcategories.items():
+                            memory_system.update_memory(memory_type, category, subcategory, subdata)
+                    elif isinstance(subcategories, list):
+                        # 如果subcategories是一个列表，我们假设它是一个数据列表
+                        memory_system.update_memory(memory_type, category, 'data', subcategories)
+                    else:
+                        print(f"警告: 无法处理的数据类型 {type(subcategories)} 在 {memory_type}/{category}")
+        
         return memory_system
 
     @staticmethod

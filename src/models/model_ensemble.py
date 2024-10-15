@@ -9,7 +9,7 @@ from models.cnn_model import DynamicCNN
 from models.gru_model import DynamicGRU
 from models.transformer_model import DynamicTransformer
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, f1_score
 import numpy as np
 from openai import OpenAI
 from memory.memory import MemorySystem
@@ -29,6 +29,15 @@ class ModelEnsemble:
         )
 
     def select_models(self, data_features: Dict[str, Any]) -> List[Tuple[str, Dict[str, Any]]]:
+        # 从长期记忆中获取最佳特征组合
+        best_combinations = self.memory_system.get_memory('long_term', 'feature_selection', 'best_combinations')
+        if best_combinations:
+            best_features = best_combinations[0]['features']  # 使用性能最好的特征组合
+            self.memory_system.update_memory('short_term', 'data', 'current_feature_set', best_features)
+        
+        # 从长期记忆中获取最优超参数范围
+        optimal_ranges = self.memory_system.get_memory('long_term', 'hyperparameters', 'optimal_ranges')
+
         context = ['model_performance', 'predictions', 'recent_training_selection', 'feedback']
         relevant_memory = self.memory_system.get_relevant_memory(context)
         
@@ -86,10 +95,7 @@ class ModelEnsemble:
             explanation = "由于LLM调用失败，默认选择了前两个模型，使用默认参数。"
 
         self.selected_models = selected_models_with_params
-        self.memory_system.update_memory('short_term', 'model_selection', {
-            'selected_models': selected_models_with_params,
-            'explanation': explanation
-        })
+        self.memory_system.update_memory('short_term', 'model_selection', 'selected_models', selected_models_with_params)
 
         return self.selected_models
 
@@ -125,24 +131,32 @@ class ModelEnsemble:
             
             # 更新模型性能到记忆系统
             performance = self._evaluate_model(model, X_train, y_train)
-            self.memory_system.update_memory('long_term', 'model_performance', {
-                'model': model_name,
-                'params': params,
-                'performance': performance
+            self.memory_system.update_memory('short_term', 'model', 'current_model_performance', {
+                model_name: performance
             })
         
         return self.trained_models
 
     def _evaluate_model(self, model, X, y):
-        # 这里可以添加更复杂的评估逻辑
         if isinstance(model, torch.nn.Module):
             with torch.no_grad():
                 y_pred = model(torch.FloatTensor(X)).numpy()
         else:
             y_pred = model.predict(X)
-        return accuracy_score(y, (y_pred > 0.5).astype(int))
+        return {
+            'accuracy': accuracy_score(y, (y_pred > 0.5).astype(int)),
+            'f1_score': f1_score(y, (y_pred > 0.5).astype(int))
+        }
 
     def ensemble_models(self):
+        # 从长期记忆中获取最有效的集成策略
+        ensemble_strategies = self.memory_system.get_memory('long_term', 'ensemble_strategies', 'effectiveness')
+        if ensemble_strategies:
+            best_strategy = max(ensemble_strategies, key=lambda x: x['average_performance_gain'])
+            ensemble_method = best_strategy['strategy']
+        else:
+            ensemble_method = "averaging"  # 默认使用平均集成
+
         model_names = [name for name, _ in self.trained_models]
         prompt = f"""
         根据以下训练好的模型,推荐最佳的集成方法:
@@ -179,10 +193,7 @@ class ModelEnsemble:
         else:  # 默认使用平均集成
             self.ensemble_model = self._average_ensemble
 
-        self.memory_system.update_memory('short_term', 'ensemble_method', {
-            'method': ensemble_method,
-            'explanation': explanation
-        })
+        self.memory_system.update_memory('short_term', 'ensemble_method', 'method', ensemble_method)
 
         return self.ensemble_model
 
@@ -249,6 +260,9 @@ def main():
     X_test = np.array([sample.features for sample in test_samples])
     y_test = np.array([sample.label for sample in test_samples])
 
+    # 更新当前的时间窗口大小
+    loaded_memory.update_memory('short_term', 'data', 'time_window', X_train.shape[1])
+
     # 选择模型
     data_features = {"shape": X_train.shape, "type": "time_series", "target": "binary"}
     selected_models = ensemble.select_models(data_features)
@@ -265,7 +279,17 @@ def main():
     # 评估集成模型
     y_pred = ensemble_model(X_test)
     accuracy = accuracy_score(y_test, (y_pred > 0.5).astype(int))
+    f1 = f1_score(y_test, (y_pred > 0.5).astype(int))
     print(f"集成模型准确率: {accuracy}")
+    print(f"集成模型F1分数: {f1}")
+
+    # 更新集成模型性能
+    loaded_memory.update_memory('short_term', 'model', 'current_model_performance', {
+        'Ensemble': {'accuracy': accuracy, 'f1_score': f1}
+    })
+
+    # 整合记忆
+    loaded_memory.consolidate_memory()
 
     # 保存更新后的记忆
     loaded_memory.save_to_json(memory_path)

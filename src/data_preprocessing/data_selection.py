@@ -10,7 +10,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from openai import OpenAI
 from datetime import datetime
-from time_series_sample import TimeSeriesSample
+from data_preprocessing.time_series_sample import TimeSeriesSample
 from memory.memory import MemorySystem
 
 # 在文件开头添加这行代码
@@ -73,7 +73,7 @@ def select_training_data_traditional_timestamp(data, start_time, end_time, train
         data (pd.DataFrame): 原始数据集，包含 'timestamp' 和 'label' 列。
         start_time (str or pd.Timestamp): 数据选择的开始时间。
         end_time (str or pd.Timestamp): 数据选择的结束时间。
-        train_ratio (float): 训练集占选定数据的比例，默认为0.8。
+        train_ratio (float): 训练集占选定数据的比例，���认为0.8。
         random_state (int): 随机种子，用于可重复的随机划分。
 
     Returns:
@@ -213,14 +213,12 @@ def select_training_data_with_llm_timestamp(samples, memory_system):
     train_samples, test_samples = train_test_split(selected_samples, train_size=train_ratio, random_state=42)
 
     # 更新短期记忆
-    memory_system.update_memory('short_term', 'recent_training_selection', {
-        'time_period': {
-            '开始时间': datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S'),
-            '结束时间': datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
-        },
-        'train_ratio': train_ratio
+    memory_system.update_memory('short_term', 'recent_training_selection', 'time_period', {
+        '开始时间': datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S'),
+        '结束时间': datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
     })
-    memory_system.update_memory('short_term', 'feedback', explanation)
+    memory_system.update_memory('short_term', 'recent_training_selection', 'train_ratio', train_ratio)
+    memory_system.update_memory('short_term', 'feedback', 'explanation', explanation)
 
     print(f"选择的时间段: {datetime.fromtimestamp(start_time)} 到 {datetime.fromtimestamp(end_time)}")
     print(f"训练集比例: {train_ratio}")
