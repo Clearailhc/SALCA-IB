@@ -116,7 +116,7 @@ def select_features_traditional(X, y, n_features=10):
 
     Returns:
         np.ndarray: 选择后的特征矩阵。
-        list: 选择的特征索���。
+        list: 选择的特征引。
         SelectKBest: 选择器对象。
     """
     # 计算每个样本在时间维度上的平均值
@@ -171,10 +171,10 @@ def select_features_with_llm(X, y, feature_names, memory_system, window_size):
     ]
 
     # 获取历史故障模式
-    historical_patterns = memory_system.get_memory('long_term', 'failure_patterns')
+    historical_patterns = memory_system.get_memory('long_term', 'failure_patterns', 'feature_correlations')
     
     # 获取最近的反馈
-    recent_feedback = memory_system.get_memory('short_term', 'feedback')
+    recent_feedback = memory_system.get_memory('short_term', 'feedback', 'recent')
 
     # 构建提示信息
     prompt = f"""
@@ -224,7 +224,7 @@ def select_features_with_llm(X, y, feature_names, memory_system, window_size):
 
     # 解析 LLM 响应
     llm_output = response.choices[0].message.content
-    selected_features, explanation = parse_llm_output(llm_output)
+    selected_features, explanation = parse_llm_output(llm_output, feature_names)
 
     if not selected_features:
         print("LLM未能返回有效的特征选择结果，使用传统方法进行选择。")
@@ -238,8 +238,8 @@ def select_features_with_llm(X, y, feature_names, memory_system, window_size):
     X_selected = X[:, :, selected_indices]
 
     # 更新短期记忆
-    memory_system.update_memory('short_term', 'recent_features', selected_features)
-    memory_system.update_memory('short_term', 'feature_selection_explanation', explanation)
+    memory_system.update_memory('short_term', 'recent_features', 'data', selected_features)
+    memory_system.update_memory('short_term', 'feature_selection_explanation', 'data', explanation)
 
     print(f"LLM 选择了 {len(selected_features)} 个特征。")
     print(f"选择的特征: {', '.join(selected_features)}")
@@ -247,17 +247,7 @@ def select_features_with_llm(X, y, feature_names, memory_system, window_size):
 
     return X_selected, selected_indices
 
-def parse_llm_output(llm_output):
-    """
-    解析LLM的输出，提取选择的特征和解释。
-
-    Args:
-        llm_output (str): LLM的输出文本。
-
-    Returns:
-        list: 选择的特征名称列表。
-        str: 选择理由。
-    """
+def parse_llm_output(llm_output, feature_names):
     selected_features = []
     explanation = ""
     
@@ -273,7 +263,9 @@ def parse_llm_output(llm_output):
             feature_section = False
             explanation_section = True
         elif feature_section and line.strip().startswith('-'):
-            selected_features.append(line.strip()[1:].strip())
+            feature = line.strip()[1:].strip()
+            if feature in feature_names:
+                selected_features.append(feature)
         elif explanation_section:
             explanation += line.strip() + " "
 
@@ -289,9 +281,9 @@ def select_window_size_with_llm(memory_system):
     Returns:
         float: 选择的时间窗口大小（小时）。
     """
-    historical_patterns = memory_system.get_memory('long_term', 'failure_patterns')
-    recent_feedback = memory_system.get_memory('short_term', 'feedback')
-    model_performance = memory_system.get_memory('long_term', 'model_performance')
+    historical_patterns = memory_system.get_memory('long_term', 'failure_patterns', 'feature_correlations')
+    recent_feedback = memory_system.get_memory('short_term', 'feedback', 'recent')
+    model_performance = memory_system.get_memory('long_term', 'model_performance', 'trends')
     
     prompt = f"""
     根据以下信息，选择一个合适的时间窗口大小（以小时为单位）：
@@ -341,8 +333,8 @@ def select_window_size_with_llm(memory_system):
     window_size, explanation = parse_window_size_output(llm_output)
 
     # 更新短期记忆
-    memory_system.update_memory('short_term', 'window_size', window_size)
-    memory_system.update_memory('short_term', 'window_size_explanation', explanation)
+    memory_system.update_memory('short_term', 'window_size', 'current', window_size)
+    memory_system.update_memory('short_term', 'window_size', 'explanation', explanation)
 
     print(f"LLM建议的时间窗口大小：{window_size}小时")
     print(f"解释：{explanation}")
@@ -391,7 +383,7 @@ def select_and_save_features(memory_path=None):
     neg_data_dir = os.path.join(processed_data_dir, "neg")
     output_selected_data = os.path.join(processed_data_dir, "selected_features.jsonl")
 
-    # 使用提供的路径或默认路径加载记忆系统
+    # 使用提供的路径或默认路径载记忆系统
     default_memory_path = './src/memory/memory_test.json'
     memory_path = memory_path or default_memory_path
     
@@ -437,7 +429,7 @@ def select_and_save_features(memory_path=None):
     print("特征选择完成。选择的特征已保存至", output_selected_data)
 
     # 更新记忆系统
-    memory_system.update_memory('short_term', 'data_characteristics', {
+    memory_system.update_memory('short_term', 'data_characteristics', 'current', {
         'window_size': window_size,
         'selected_features': selected_feature_names
     })

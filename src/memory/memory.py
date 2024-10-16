@@ -54,9 +54,13 @@ class MemorySystem:
         else:
             print(f"错误: 无效的记忆类型: {memory_type}")
 
-    def get_memory(self, memory_type: str, category: str, subcategory: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    def get_memory(self, memory_type: str, category: str, subcategory: str) -> Any:
         memory = self._get_memory_by_type(memory_type)
-        return memory.get_data(category, subcategory, limit) if memory else []
+        if memory:
+            return memory.get_data(category, subcategory)
+        else:
+            print(f"错误: 无效的记忆类型: {memory_type}")
+            return None
 
     def get_memory_categories(self, memory_type: str) -> List[str]:
         memory = self._get_memory_by_type(memory_type)
