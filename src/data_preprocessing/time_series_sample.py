@@ -51,10 +51,10 @@ class TimeSeriesSample:
         # 打印原始特征的统计信息
         # print(f"原始特征统计: min={self.features.min():.4f}, max={self.features.max():.4f}, mean={self.features.mean():.4f}")
         
-        # 创建一个包含所有特征的新矩阵，初始值为NaN
-        full_features = np.full((self.features.shape[0], len(all_feature_names)), np.nan)
-        for i, feature_name in enumerate(self.feature_names):
-            full_features[:, all_feature_names.index(feature_name)] = self.features[:, i]
+        # 创建一个包含所有特征的新矩阵，初始值为0
+        full_features = np.full((self.features.shape[0], len(all_feature_names)), 0.0)
+        for feature_name in self.feature_names:
+            full_features[:, all_feature_names.index(feature_name)] = self.features[:, self.feature_names.index(feature_name)]
         
         # 打印填充NaN后的统计信息
         # print(f"填充NaN后统计: min={np.nanmin(full_features):.4f}, max={np.nanmax(full_features):.4f}, mean={np.nanmean(full_features):.4f}")
@@ -88,8 +88,10 @@ class TimeSeriesSample:
         scaled_features = scaler.fit_transform(imputed_features)
 
         # 创建滑动窗口
-        self.preprocessed_features = np.array([scaled_features[i:i+window_size] 
-                                               for i in range(len(scaled_features) - window_size + 1)])
+        # self.preprocessed_features = np.array([scaled_features[i:i+window_size] 
+        #                                        for i in range(len(scaled_features) - window_size + 1)])
+        # 取最近的window_size个时间步的特征作为样本
+        self.preprocessed_features = scaled_features[-window_size:]
         
         # 打印滑动窗口处理后的统计信息
         # print(f"滑动窗口后统计: min={self.preprocessed_features.min():.4f}, max={self.preprocessed_features.max():.4f}, mean={self.preprocessed_features.mean():.4f}")
@@ -172,3 +174,55 @@ class TimeSeriesSample:
         if 'preprocessed_features' in data:
             sample.preprocessed_features = np.array(data['preprocessed_features'])
         return sample
+
+    def preprocess_custom(self, all_feature_names, max_time_steps, window_size, feature_stats):
+        """
+        使用自定义方法预处理样本数据。
+
+        Args:
+            all_feature_names (list): 所有特征名称。
+            max_time_steps (int): 最大时间步长。
+            window_size (int): 时间窗口大小。
+            feature_stats (dict): 特征统计信息。
+        """
+        # 创建一个包含所有特征的新矩阵，初始值为0
+        try: 
+            self.feature_stats = feature_stats[-1]['data'][-1]
+        except:
+            self.feature_stats = feature_stats
+        full_features = np.full((self.features.shape[0], len(all_feature_names)), 0.0)
+        for i, name in enumerate(self.feature_names):
+            if name in all_feature_names:
+                full_features[:, all_feature_names.index(name)] = self.features[:, i]
+
+        # 计算需要在开头填充的行数
+        padding_rows = max_time_steps - full_features.shape[0]
+        if padding_rows > 0:
+            # 为每个特征使用其平均值进行填充
+            padding = np.array([[self.feature_stats[name]['mean'] for name in all_feature_names]] * padding_rows)
+            padded_features = np.vstack((padding, full_features))
+            
+            # 调整时间戳（每次减少 600 秒，即 10 分钟）
+            new_timestamps = np.arange(self.timestamp[0] - 600 * padding_rows, self.timestamp[0], 600)
+            self.timestamp = np.concatenate((new_timestamps, self.timestamp))
+        else:
+            padded_features = full_features
+
+        # 填充缺失值并归一化
+        for i, name in enumerate(all_feature_names):
+            column = padded_features[:, i]
+            mask = np.isnan(column)
+            column[mask] = self.feature_stats[name]['mean']
+            
+            min_val, max_val = self.feature_stats[name]['min'], self.feature_stats[name]['max']
+            if min_val != max_val:
+                padded_features[:, i] = (column - min_val) / (max_val - min_val)
+            else:
+                padded_features[:, i] = 0  # 如果min和max相等，将所有值设为0
+
+        # 只取最后window_size个时间步的特征
+        self.preprocessed_features = padded_features[-window_size:]
+
+        # 调整时间戳以匹配预处理后的特征数量
+        self.timestamp = self.timestamp[-window_size:]
+        self.feature_names = all_feature_names

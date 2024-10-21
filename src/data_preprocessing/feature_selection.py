@@ -76,18 +76,18 @@ def calculate_window_size(hours):
     """
     return int(hours * 6)
 
-def preprocess_data(samples, window_size):
+def preprocess_data(samples, window_size, memory_system):
     """
-    预处理数据，包括处理缺失值、标准化和创建滑动窗口。
+    预处理数据，包括处理缺失值、归一化和创建滑动窗口。
 
     Args:
         samples (list of TimeSeriesSample): 原始样本列表。
         window_size (int): 时间窗口大小（数据点数量）。
+        memory_system (MemorySystem): 记忆系统。
 
     Returns:
         list of TimeSeriesSample: 预处理后的样本列表。
-        StandardScaler: 标准化器对象。
-        list: 所有特征名称的列表。
+        dict: 所有特征的统计信息。
     """
     # 获取所有唯一的特征名
     all_feature_names = list(set(feature for sample in samples for feature in sample.feature_names))
@@ -96,14 +96,54 @@ def preprocess_data(samples, window_size):
     # 找出最大的时间步长
     max_time_steps = max(sample.features.shape[0] for sample in samples)
 
-    # 创建标准化器
-    scaler = StandardScaler()
+    # 从记忆系统中获取特征统计信息，如果不存在则计算
+    feature_stats = memory_system.get_memory('long_term', 'feature_stats', 'data')
+    if not feature_stats:
+        feature_stats = calculate_feature_stats(samples, all_feature_names)
+        memory_system.update_memory('long_term', 'feature_stats', 'data', feature_stats)
 
     # 对每个样本进行预处理
     for sample in samples:
-        sample.preprocess(all_feature_names, max_time_steps, window_size, scaler)
+        sample.preprocess_custom(all_feature_names, max_time_steps, window_size, feature_stats)
 
-    return samples, scaler, all_feature_names
+    return samples, feature_stats
+
+def calculate_feature_stats(samples, feature_names):
+    """
+    计算所有特征的统计信息。
+
+    Args:
+        samples (list of TimeSeriesSample): 样本列表。
+        feature_names (list): 所有特征名称。
+
+    Returns:
+        dict: 包含每个特征的min、max、mean的字典。
+    """
+    feature_stats = {name: {'min': float('inf'), 'max': float('-inf'), 'sum': 0, 'count': 0} for name in feature_names}
+
+    for sample in samples:
+        for i, name in enumerate(sample.feature_names):
+            if name in feature_names:
+                values = sample.features[:, i]
+                valid_values = values[~np.isnan(values)]
+                if len(valid_values) > 0:
+                    feature_stats[name]['min'] = min(feature_stats[name]['min'], np.min(valid_values))
+                    feature_stats[name]['max'] = max(feature_stats[name]['max'], np.max(valid_values))
+                    feature_stats[name]['sum'] += np.sum(valid_values)
+                    feature_stats[name]['count'] += len(valid_values)
+
+    for name in feature_names:
+        if feature_stats[name]['count'] > 0:
+            feature_stats[name]['mean'] = feature_stats[name]['sum'] / feature_stats[name]['count']
+        else:
+            # 如果所有值都是 NaN，设置默认值
+            feature_stats[name]['min'] = 0
+            feature_stats[name]['max'] = 1
+            feature_stats[name]['mean'] = 0.5
+        del feature_stats[name]['sum']
+        del feature_stats[name]['count']
+
+    return feature_stats
 
 def select_features_traditional(X, y, n_features=10):
     """
@@ -308,8 +348,12 @@ def select_window_size_with_llm(memory_system):
     时间窗口必须大于等于0.5小时且小于等于3小时。
 
     回复格式：
-    时间窗口大小：X小时
-    解释：你的解释文本。
+    时间窗口大小：<X小时>
+    解释：<选择的理由>
+
+    注意：
+    1. 时间窗口大小必须是一个小数，精确到0.5小时。
+    2. 选择的理由不要换行，直接写成一段话。
     """
 
     try:
@@ -393,6 +437,9 @@ def select_and_save_features(memory_path=None):
     except FileNotFoundError:
         print(f"警告：未找到记忆文件 {memory_path}，将创建新的记忆系统")
         memory_system = MemorySystem()
+    except json.JSONDecodeError:
+        print(f"警告：记忆文件 {memory_path} 为空或包含无效的JSON数据，将创建新的记忆系统")
+        memory_system = MemorySystem()
 
     print("加载数据...")
     samples = load_processed_data(pos_data_dir, neg_data_dir)
@@ -404,14 +451,14 @@ def select_and_save_features(memory_path=None):
     print(f"使用 {window_hours:.1f} 小时的时间窗口（{window_size} 个数据点）")
 
     print("预处理数据...")
-    preprocessed_samples, scaler, all_feature_names = preprocess_data(samples, window_size)
+    preprocessed_samples, feature_stats = preprocess_data(samples, window_size, memory_system)
 
     # 准备特征矩阵和标签向量
     X = np.array([sample.preprocessed_features for sample in preprocessed_samples])
     y = np.array([sample.label for sample in preprocessed_samples])
 
     print("使用LLM进行特征选择...")
-    X_selected, selected_feature_indices = select_features_with_llm(X, y, all_feature_names, memory_system, window_size)
+    X_selected, selected_feature_indices = select_features_with_llm(X, y, preprocessed_samples[0].feature_names, memory_system, window_size)
 
     if X_selected is None:
         print("LLM特征选择失败，使用传统方法...")
@@ -420,11 +467,11 @@ def select_and_save_features(memory_path=None):
         selector = None
 
     # 获取选中特征的名称
-    selected_feature_names = [all_feature_names[i] for i in selected_feature_indices]
+    selected_feature_names = [preprocessed_samples[0].feature_names[i] for i in selected_feature_indices]
 
     print("保存选择后的特征和相关对象...")
-    save_selected_features(preprocessed_samples, selected_feature_indices, selected_feature_names, 
-                           scaler, selector, output_selected_data, window_size)
+    save_selected_features(X_selected, y, selected_feature_names, 
+                           feature_stats, selector, output_selected_data, window_size, memory_system)
 
     print("特征选择完成。选择的特征已保存至", output_selected_data)
 
@@ -440,21 +487,19 @@ def select_and_save_features(memory_path=None):
     memory_system.consolidate_memory()
     print("记忆整合完成")
 
-def save_selected_features(samples, selected_feature_indices, selected_feature_names, scaler, selector, output_path, window_size):
+def save_selected_features(X_selected, y, selected_feature_names, feature_stats, selector, output_path, window_size, memory_system):
     """
     保存选择后的特征和相关对象。
 
     Args:
-        samples (list of TimeSeriesSample): 预处理后的样本列表。
-        selected_feature_indices (list): 选择的特征索引。
+        X_selected (np.array): 选择后的特征数据，形状为 (样本数, 时间步数, 特征数)。
+        y (np.array): 标签数据。
         selected_feature_names (list): 选择的特征名称。
-        scaler (StandardScaler): 标准化器对象。
+        feature_stats (dict): 所有特征的统计信息。
         selector (SelectKBest or None): 特征选择器对象。
         output_path (str): 输出路径。
         window_size (int): 时间窗口大小（数据点数量）。
-
-    Note:
-        保存的内容包括样本数据（JSONL格式）、metadata、scaler和selector（如果有）。
+        memory_system (MemorySystem): 记忆系统。
     """
     # 创建输出目录（如果不存在）
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -462,38 +507,32 @@ def save_selected_features(samples, selected_feature_indices, selected_feature_n
     # 保存样本数据为 JSONL 文件
     jsonl_path = os.path.splitext(output_path)[0] + '.jsonl'
     with open(jsonl_path, 'w') as f:
-        for sample in samples:
-            # 只保存选中的特征
-            sample.preprocessed_features = sample.preprocessed_features[:, :, selected_feature_indices]
-            sample.feature_names = selected_feature_names
-            f.write(sample.to_json() + '\n')
+        for i in range(X_selected.shape[0]):
+            sample_data = {
+                'features': X_selected[i].tolist(),
+                'label': int(y[i]),
+                'feature_names': selected_feature_names
+            }
+            json.dump(sample_data, f)
+            f.write('\n')
     print(f"选择的特征数据已保存至 {jsonl_path}")
 
-    # 保存 metadata
-    metadata = {
-        'window_size': window_size,
-        'selected_features': selected_feature_names
-    }
-    metadata_path = os.path.join(os.path.dirname(output_path), 'metadata.pkl')
-    joblib.dump(metadata, metadata_path)
-    print(f"Metadata 已保存至 {metadata_path}")
-
-    # 保存 scaler
-    if scaler is not None:
-        scaler_path = os.path.join(os.path.dirname(output_path), 'scaler.pkl')
-        joblib.dump(scaler, scaler_path)
-        print(f"Scaler 已保存至 {scaler_path}")
-    else:
-        print("没有提供 Scaler 对象，跳过保存")
-
-    # 如果有 selector，也保存它
+    # 长期记忆更新
+    memory_system.update_memory('long_term', 'feature_selection', 'feature_stats', feature_stats)
+    memory_system.update_memory('long_term', 'feature_selection', 'selected_features', selected_feature_names)
+    memory_system.update_memory('long_term', 'feature_selection', 'window_size', window_size)
     if selector is not None:
-        selector_path = os.path.join(os.path.dirname(output_path), 'selector.pkl')
-        joblib.dump(selector, selector_path)
-        print(f"Selector 已保存至 {selector_path}")
-    else:
-        print("没有提供 Selector 对象，跳过保存")
+        memory_system.update_memory('long_term', 'feature_selection', 'selector', selector)
 
+    # 短期记忆更新
+    memory_system.update_memory('short_term', 'recent_features', 'data', selected_feature_names)
+    memory_system.update_memory('short_term', 'feature_selection_result', 'data', {
+        'num_samples': X_selected.shape[0],
+        'num_features': len(selected_feature_names),
+        'feature_names': selected_feature_names
+    })
+
+    print("特征选择相关信息已保存到记忆系统")
     print(f"时间窗口大小: {window_size} 数据点（{window_size/6:.1f} 小时）")
     print(f"选择的特征: {', '.join(selected_feature_names)}")
 
@@ -540,3 +579,4 @@ if __name__ == "__main__":
     # 可以选择性地传入记忆文件路径
     # select_and_save_features('./path/to/custom/memory.json')
     select_and_save_features()
+

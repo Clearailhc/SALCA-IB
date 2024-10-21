@@ -23,6 +23,8 @@ def organize_samples(processed_data_dir, positive_dir, negative_dir):
     remove_duplicates(negative_dir)
 
     print("样本组织和去重完成。")
+    print(f"正样本数量：{len(os.listdir(positive_dir))}")
+    print(f"负样本数量：{len(os.listdir(negative_dir))}")
 
 def process_samples(source_dir, target_dir, sample_type):
     for time_period in os.listdir(source_dir):
