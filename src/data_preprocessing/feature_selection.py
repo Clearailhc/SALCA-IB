@@ -4,17 +4,15 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 import numpy as np
-from sklearn.feature_selection import SelectKBest, f_regression, mutual_info_regression
+from sklearn.feature_selection import SelectKBest, mutual_info_regression
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
-import joblib
-import openai
 import json
 import time
 from datetime import datetime, timedelta
-from scipy import stats
 from time_series_sample import TimeSeriesSample
 from memory.memory import MemorySystem
+import openai
 
 # 配置 OpenAI API
 openai.api_key = os.getenv("OPENAI_API_KEY", "infra-ppt-creativity")
@@ -97,10 +95,10 @@ def preprocess_data(samples, window_size, memory_system):
     max_time_steps = max(sample.features.shape[0] for sample in samples)
 
     # 从记忆系统中获取特征统计信息，如果不存在则计算
-    feature_stats = memory_system.get_memory('long_term', 'feature_stats', 'data')
+    feature_stats = memory_system.get_memory('long_term', 'feature_stats')
     if not feature_stats:
         feature_stats = calculate_feature_stats(samples, all_feature_names)
-        memory_system.update_memory('long_term', 'feature_stats', 'data', feature_stats)
+        memory_system.update_memory('long_term', 'feature_stats', feature_stats)
 
     # 对每个样本进行预处理
     for sample in samples:
@@ -211,10 +209,10 @@ def select_features_with_llm(X, y, feature_names, memory_system, window_size):
     ]
 
     # 获取历史故障模式
-    historical_patterns = memory_system.get_memory('long_term', 'failure_patterns', 'feature_correlations')
+    historical_patterns = memory_system.get_memory('long_term', 'failure_patterns')
     
     # 获取最近的反馈
-    recent_feedback = memory_system.get_memory('short_term', 'feedback', 'recent')
+    recent_feedback = memory_system.get_memory('short_term', 'feedback')
 
     # 构建提示信息
     prompt = f"""
@@ -278,8 +276,8 @@ def select_features_with_llm(X, y, feature_names, memory_system, window_size):
     X_selected = X[:, :, selected_indices]
 
     # 更新短期记忆
-    memory_system.update_memory('short_term', 'recent_features', 'data', selected_features)
-    memory_system.update_memory('short_term', 'feature_selection_explanation', 'data', explanation)
+    memory_system.update_memory('short_term', 'recent_features', selected_features)
+    memory_system.update_memory('short_term', 'feature_selection_explanation', explanation)
 
     print(f"LLM 选择了 {len(selected_features)} 个特征。")
     print(f"选择的特征: {', '.join(selected_features)}")
@@ -321,9 +319,9 @@ def select_window_size_with_llm(memory_system):
     Returns:
         float: 选择的时间窗口大小（小时）。
     """
-    historical_patterns = memory_system.get_memory('long_term', 'failure_patterns', 'feature_correlations')
-    recent_feedback = memory_system.get_memory('short_term', 'feedback', 'recent')
-    model_performance = memory_system.get_memory('long_term', 'model_performance', 'trends')
+    historical_patterns = memory_system.get_memory('long_term', 'failure_patterns')
+    recent_feedback = memory_system.get_memory('short_term', 'feedback')
+    model_performance = memory_system.get_memory('long_term', 'model_performance')
     
     prompt = f"""
     根据以下信息，选择一个合适的时间窗口大小（以小时为单位）：
@@ -377,8 +375,8 @@ def select_window_size_with_llm(memory_system):
     window_size, explanation = parse_window_size_output(llm_output)
 
     # 更新短期记忆
-    memory_system.update_memory('short_term', 'window_size', 'current', window_size)
-    memory_system.update_memory('short_term', 'window_size', 'explanation', explanation)
+    memory_system.update_memory('short_term', 'window_size', window_size)
+    memory_system.update_memory('short_term', 'window_size_explanation', explanation)
 
     print(f"LLM建议的时间窗口大小：{window_size}小时")
     print(f"解释：{explanation}")
@@ -476,14 +474,14 @@ def select_and_save_features(memory_path=None):
     print("特征选择完成。选择的特征已保存至", output_selected_data)
 
     # 更新记忆系统
-    memory_system.update_memory('short_term', 'data_characteristics', 'current', {
+    memory_system.update_memory('short_term', 'data_characteristics', {
         'window_size': window_size,
         'selected_features': selected_feature_names
     })
     memory_system.save_to_json(memory_path)
     print(f"更新后的记忆系统已保存至 {memory_path}")
 
-    # 执行记忆整合
+    # 执行记忆整合1
     memory_system.consolidate_memory()
     print("记忆整合完成")
 
@@ -511,22 +509,24 @@ def save_selected_features(X_selected, y, selected_feature_names, feature_stats,
             sample_data = {
                 'features': X_selected[i].tolist(),
                 'label': int(y[i]),
-                'feature_names': selected_feature_names
+                'feature_names': selected_feature_names,
             }
             json.dump(sample_data, f)
             f.write('\n')
     print(f"选择的特征数据已保存至 {jsonl_path}")
 
     # 长期记忆更新
-    memory_system.update_memory('long_term', 'feature_selection', 'feature_stats', feature_stats)
-    memory_system.update_memory('long_term', 'feature_selection', 'selected_features', selected_feature_names)
-    memory_system.update_memory('long_term', 'feature_selection', 'window_size', window_size)
+    memory_system.update_memory('long_term', 'feature_selection', {
+        'feature_stats': feature_stats,
+        'selected_features': selected_feature_names,
+        'window_size': window_size
+    })
     if selector is not None:
-        memory_system.update_memory('long_term', 'feature_selection', 'selector', selector)
+        memory_system.update_memory('long_term', 'feature_selection_selector', selector)
 
     # 短期记忆更新
-    memory_system.update_memory('short_term', 'recent_features', 'data', selected_feature_names)
-    memory_system.update_memory('short_term', 'feature_selection_result', 'data', {
+    memory_system.update_memory('short_term', 'recent_features', selected_feature_names)
+    memory_system.update_memory('short_term', 'feature_selection_result', {
         'num_samples': X_selected.shape[0],
         'num_features': len(selected_feature_names),
         'feature_names': selected_feature_names
@@ -550,27 +550,13 @@ def load_selected_features(input_path):
     Note:
         加载的数据包括样本特征、标签和时间戳。
     """
-    # 加载CSV数据
-    df = pd.read_csv(input_path)
+    with open(input_path, 'r') as f:
+        samples = [json.loads(line) for line in f]
     
-    # 加载元数据
-    metadata = joblib.load(os.path.join(os.path.dirname(input_path), 'metadata.pkl'))
-    window_size = metadata['window_size']
-    selected_features = metadata['selected_features']
-
-    # 重构样本
-    samples = []
-    for sample_id in df['sample_id'].unique():
-        sample_df = df[df['sample_id'] == sample_id]
-        features = sample_df[selected_features].values
-        label = sample_df['label'].iloc[0]
-        timestamp = sample_df['timestamp'].values
-        
-        samples.append({
-            'features': features,
-            'label': label,
-            'timestamp': timestamp
-        })
+    metadata = {
+        'window_size': len(samples[0]['features']),
+        'selected_features': samples[0]['feature_names']
+    }
 
     return samples, metadata
 
@@ -579,4 +565,3 @@ if __name__ == "__main__":
     # 可以选择性地传入记忆文件路径
     # select_and_save_features('./path/to/custom/memory.json')
     select_and_save_features()
-
