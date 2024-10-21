@@ -451,9 +451,10 @@ def select_and_save_features(memory_path=None):
     print("预处理数据...")
     preprocessed_samples, feature_stats = preprocess_data(samples, window_size, memory_system)
 
-    # 准备特征矩阵和标签向量
+    # 准备特征矩阵、标签向量和时间戳
     X = np.array([sample.preprocessed_features for sample in preprocessed_samples])
     y = np.array([sample.label for sample in preprocessed_samples])
+    timestamps = [sample.timestamp for sample in preprocessed_samples]  # 假设 TimeSeriesSample 有 timestamp 属性
 
     print("使用LLM进行特征选择...")
     X_selected, selected_feature_indices = select_features_with_llm(X, y, preprocessed_samples[0].feature_names, memory_system, window_size)
@@ -469,7 +470,8 @@ def select_and_save_features(memory_path=None):
 
     print("保存选择后的特征和相关对象...")
     save_selected_features(X_selected, y, selected_feature_names, 
-                           feature_stats, selector, output_selected_data, window_size, memory_system)
+                           feature_stats, selector, output_selected_data, 
+                           window_size, memory_system, timestamps)
 
     print("特征选择完成。选择的特征已保存至", output_selected_data)
 
@@ -485,7 +487,7 @@ def select_and_save_features(memory_path=None):
     memory_system.consolidate_memory()
     print("记忆整合完成")
 
-def save_selected_features(X_selected, y, selected_feature_names, feature_stats, selector, output_path, window_size, memory_system):
+def save_selected_features(X_selected, y, selected_feature_names, feature_stats, selector, output_path, window_size, memory_system, timestamps):
     """
     保存选择后的特征和相关对象。
 
@@ -498,6 +500,7 @@ def save_selected_features(X_selected, y, selected_feature_names, feature_stats,
         output_path (str): 输出路径。
         window_size (int): 时间窗口大小（数据点数量）。
         memory_system (MemorySystem): 记忆系统。
+        timestamps (list): 每个样本的时间戳列表。
     """
     # 创建输出目录（如果不存在）
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -510,10 +513,11 @@ def save_selected_features(X_selected, y, selected_feature_names, feature_stats,
                 'features': X_selected[i].tolist(),
                 'label': int(y[i]),
                 'feature_names': selected_feature_names,
+                'timestamp': timestamps[i].tolist()  # 添加时间戳
             }
             json.dump(sample_data, f)
             f.write('\n')
-    print(f"选择的特征数据已保存至 {jsonl_path}")
+    print(f"选择的特征数据和时间戳已保存至 {jsonl_path}")
 
     # 长期记忆更新
     memory_system.update_memory('long_term', 'feature_selection', {
@@ -541,14 +545,14 @@ def load_selected_features(input_path):
     加载保存的特征数据并重构为3D格式。
 
     Args:
-        input_path (str): 输入CSV文件路径。
+        input_path (str): 输入JSONL文件路径。
 
     Returns:
         list of dict: 重构后的样本列表。
         dict: 元数据，包含窗口大小和选择的特征。
 
     Note:
-        加载的数据包括样本特征、标签和时间戳。
+        加载的数据包括样本特征、标签、时间戳和特征名称。
     """
     with open(input_path, 'r') as f:
         samples = [json.loads(line) for line in f]

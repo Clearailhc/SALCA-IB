@@ -3,172 +3,348 @@
     "current_feature_set": [
       [
         [
-          "ib_device_stat_bias_current_c_0",
-          "ib_device_stat_bias_current_c_1",
-          "ib_device_stat_temperature",
-          "ib_device_stat_rx_power_current_c_0",
-          "ib_device_stat_rx_power_current_c_1"
+          [
+            [
+              [
+                "ib_device_stat_bias_current_c_0",
+                "ib_device_stat_bias_current_c_1",
+                "ib_device_stat_temperature",
+                "ib_device_stat_rx_power_current_c_0",
+                "ib_device_stat_rx_power_current_c_1"
+              ]
+            ]
+          ]
         ]
       ]
     ],
     "current_time_range": [
       [
-        {
-          "start": 1729503383,
-          "end": 1729506983
-        }
+        [
+          [
+            [
+              {
+                "start": 1729503383,
+                "end": 1729506983
+              }
+            ]
+          ]
+        ]
       ]
     ],
     "current_model_performance": [
       [
-        {
-          "XGBoost": {
-            "accuracy": 0.83,
-            "precision": 0.81,
-            "recall": 0.76,
-            "f1_score": 0.79
-          },
-          "LSTM": {
-            "accuracy": 0.86,
-            "precision": 0.84,
-            "recall": 0.79,
-            "f1_score": 0.82
-          },
-          "Ensemble": {
-            "accuracy": 0.87,
-            "precision": 0.85,
-            "recall": 0.8,
-            "f1_score": 0.83
-          }
-        }
+        [
+          [
+            [
+              {
+                "XGBoost": {
+                  "accuracy": 0.83,
+                  "precision": 0.81,
+                  "recall": 0.76,
+                  "f1_score": 0.79
+                },
+                "LSTM": {
+                  "accuracy": 0.86,
+                  "precision": 0.84,
+                  "recall": 0.79,
+                  "f1_score": 0.82
+                },
+                "Ensemble": {
+                  "accuracy": 0.87,
+                  "precision": 0.85,
+                  "recall": 0.8,
+                  "f1_score": 0.83
+                }
+              }
+            ]
+          ]
+        ]
       ]
     ],
     "selected_models": [
       [
         [
           [
-            "LSTM",
-            {
-              "units": 128,
-              "layers": 3,
-              "dropout": 0.25
-            }
-          ],
-          [
-            "CNN",
-            {
-              "filters": 64,
-              "kernel_size": 3,
-              "pool_size": 2
-            }
-          ],
-          [
-            "GRU",
-            {
-              "units": 64,
-              "layers": 2,
-              "dropout": 0.2
-            }
+            [
+              [
+                [
+                  "LSTM",
+                  {
+                    "units": 128,
+                    "layers": 3,
+                    "dropout": 0.25
+                  }
+                ],
+                [
+                  "CNN",
+                  {
+                    "filters": 64,
+                    "kernel_size": 3,
+                    "pool_size": 2
+                  }
+                ],
+                [
+                  "GRU",
+                  {
+                    "units": 64,
+                    "layers": 2,
+                    "dropout": 0.2
+                  }
+                ]
+              ]
+            ]
           ]
         ]
       ]
     ],
     "ensemble_method": [
       [
-        {
-          "method": "averaging",
-          "explanation": "考虑到模型的多样性和计算效率，选择了平均集成方法。"
-        }
+        [
+          [
+            [
+              {
+                "method": "averaging",
+                "explanation": "考虑到模型的多样性和计算效率，选择了平均集成方法。"
+              }
+            ]
+          ]
+        ]
       ]
     ],
     "window_size": [
-      1.5
+      [
+        [
+          [
+            1.5
+          ],
+          1.5
+        ]
+      ]
     ],
     "window_size_explanation": [
-      "由于历史故障模式和最近的反馈都未提供具体信息，我们不能从这里得出明确的建议；模型性能方面显然也没有提供可供参考的数据，因此我们需要依据其他已知因素作出决定；考虑到数据采样频率为每10分钟一个数据点，在1.5小时内可以获取9个数据点，较为适中，足以捕捉大多数潜在变化而不过分增加计算负担；另外，选择1.5小时可以在避免窗口过小带来的数据不足和窗口过大带来的数据冗余之间找到平衡点，从而提升模型性能和预测准确性。"
+      [
+        [
+          [
+            "由于历史故障模式和最近的反馈都未提供具体信息，我们不能从这里得出明确的建议；模型性能方面显然也没有提供可供参考的数据，因此我们需要依据其他已知因素作出决定；考虑到数据采样频率为每10分钟一个数据点，在1.5小时内可以获取9个数据点，较为适中，足以捕捉大多数潜在变化而不过分增加计算负担；另外，选择1.5小时可以在避免窗口过小带来的数据不足和窗口过大带来的数据冗余之间找到平衡点，从而提升模型性能和预测准确性。"
+          ],
+          "由于缺乏历史故障模式、最近反馈和模型性能的具体信息，我们假设这些因素对时间窗口选择没有明确导向，此外，结合数据采样频率（每10分钟一个数据点），需要平衡短期和长期趋势，考虑数据的覆盖范围和模型复杂性，1.5小时的时间窗口能够提供9个数据点，避免过短窗口导致信息不足，且在3小时限制内保留足够多的信息，适合常见的时间序列分析。"
+        ]
+      ]
     ],
     "recent_features": [
       [
-        "ib_device_stat_bias_current_c_0",
-        "ib_device_stat_bias_current_c_1",
-        "ib_device_stat_bias_current_c_2",
-        "ib_device_stat_bias_current_c_3",
-        "ib_device_stat_rx_power_current_c_0",
-        "ib_device_stat_rx_power_current_c_1",
-        "ib_device_stat_rx_power_current_c_2",
-        "ib_device_stat_rx_power_current_c_3",
-        "ib_device_stat_temperature",
-        "ib_device_stat_tx_power_current_c_0",
-        "ib_device_stat_tx_power_current_c_1",
-        "ib_device_stat_tx_power_current_c_2",
-        "ib_device_stat_tx_power_current_c_3",
-        "ib_device_stat_voltage",
-        "ib_device_stat_wavelength"
-      ],
-      [
-        "ib_device_stat_bias_current_c_0",
-        "ib_device_stat_bias_current_c_1",
-        "ib_device_stat_bias_current_c_2",
-        "ib_device_stat_bias_current_c_3",
-        "ib_device_stat_rx_power_current_c_0",
-        "ib_device_stat_rx_power_current_c_1",
-        "ib_device_stat_rx_power_current_c_2",
-        "ib_device_stat_rx_power_current_c_3",
-        "ib_device_stat_temperature",
-        "ib_device_stat_tx_power_current_c_0",
-        "ib_device_stat_tx_power_current_c_1",
-        "ib_device_stat_tx_power_current_c_2",
-        "ib_device_stat_tx_power_current_c_3",
-        "ib_device_stat_voltage",
-        "ib_device_stat_wavelength"
+        [
+          [
+            [
+              "ib_device_stat_bias_current_c_0",
+              "ib_device_stat_bias_current_c_1",
+              "ib_device_stat_bias_current_c_2",
+              "ib_device_stat_bias_current_c_3",
+              "ib_device_stat_rx_power_current_c_0",
+              "ib_device_stat_rx_power_current_c_1",
+              "ib_device_stat_rx_power_current_c_2",
+              "ib_device_stat_rx_power_current_c_3",
+              "ib_device_stat_temperature",
+              "ib_device_stat_tx_power_current_c_0",
+              "ib_device_stat_tx_power_current_c_1",
+              "ib_device_stat_tx_power_current_c_2",
+              "ib_device_stat_tx_power_current_c_3",
+              "ib_device_stat_voltage",
+              "ib_device_stat_wavelength"
+            ],
+            [
+              "ib_device_stat_bias_current_c_0",
+              "ib_device_stat_bias_current_c_1",
+              "ib_device_stat_bias_current_c_2",
+              "ib_device_stat_bias_current_c_3",
+              "ib_device_stat_rx_power_current_c_0",
+              "ib_device_stat_rx_power_current_c_1",
+              "ib_device_stat_rx_power_current_c_2",
+              "ib_device_stat_rx_power_current_c_3",
+              "ib_device_stat_temperature",
+              "ib_device_stat_tx_power_current_c_0",
+              "ib_device_stat_tx_power_current_c_1",
+              "ib_device_stat_tx_power_current_c_2",
+              "ib_device_stat_tx_power_current_c_3",
+              "ib_device_stat_voltage",
+              "ib_device_stat_wavelength"
+            ]
+          ],
+          [
+            "ib_device_stat_bias_current_c_0",
+            "ib_device_stat_bias_current_c_1",
+            "ib_device_stat_bias_current_c_2",
+            "ib_device_stat_bias_current_c_3",
+            "ib_device_stat_rx_power_current_c_0",
+            "ib_device_stat_rx_power_current_c_1",
+            "ib_device_stat_rx_power_current_c_2",
+            "ib_device_stat_rx_power_current_c_3",
+            "ib_device_stat_temperature",
+            "ib_device_stat_tx_power_current_c_0",
+            "ib_device_stat_tx_power_current_c_1",
+            "ib_device_stat_tx_power_current_c_2",
+            "ib_device_stat_tx_power_current_c_3",
+            "ib_device_stat_voltage",
+            "ib_device_stat_wavelength"
+          ],
+          [
+            "ib_device_stat_bias_current_c_0",
+            "ib_device_stat_bias_current_c_1",
+            "ib_device_stat_bias_current_c_2",
+            "ib_device_stat_bias_current_c_3",
+            "ib_device_stat_rx_power_current_c_0",
+            "ib_device_stat_rx_power_current_c_1",
+            "ib_device_stat_rx_power_current_c_2",
+            "ib_device_stat_rx_power_current_c_3",
+            "ib_device_stat_temperature",
+            "ib_device_stat_tx_power_current_c_0",
+            "ib_device_stat_tx_power_current_c_1",
+            "ib_device_stat_tx_power_current_c_2",
+            "ib_device_stat_tx_power_current_c_3",
+            "ib_device_stat_voltage",
+            "ib_device_stat_wavelength"
+          ]
+        ]
       ]
     ],
     "feature_selection_explanation": [
-      "1. **全部选择**：由于缺少具体的历史故障模式和最近反馈信息，我无法确定哪些特征对预测目标变量最为关键。在这种情况下，保留所有特征能够让后续的模型在训练时自主选择对目标变量最有用的特征。  2. **特征代表性**：这些特征涵盖了设备的多种状态（偏置电流、接收功率、温度、发射功率、电压和波长），提供了设备运行状况的全貌。这样的全面数据有助于模型更全面地捕捉潜在的故障模式。  3. **数据分布**：所有特征的均值和方差范围相对接近，但各自有所差异。这表明它们能够提供不同的信息，即使某些特征之间可能存在共线性。  4. **未来可扩展性**：在实际应用中，模型可以通过特征重要性分析或逐步回归等方法进一步筛选特征。初期保留所有特征有助于在模型优化阶段自动选择出对预测最有用的特征。  综上所述，选择全部特征不仅能够覆盖设备运行的全面信息，还能为未来的模型优化和特征筛选提供充分的数据基础。"
+      [
+        [
+          [
+            "1. **全部选择**：由于缺少具体的历史故障模式和最近反馈信息，我无法确定哪些特征对预测目标变量最为关键。在这种情况下，保留所有特征能够让后续的模型在训练时自主选择对目标变量最有用的特征。  2. **特征代表性**：这些特征涵盖了设备的多种状态（偏置电流、接收功率、温度、发射功率、电压和波长），提供了设备运行状况的全貌。这样的全面数据有助于模型更全面地捕捉潜在的故障模式。  3. **数据分布**：所有特征的均值和方差范围相对接近，但各自有所差异。这表明它们能够提供不同的信息，即使某些特征之间可能存在共线性。  4. **未来可扩展性**：在实际应用中，模型可以通过特征重要性分析或逐步回归等方法进一步筛选特征。初期保留所有特征有助于在模型优化阶段自动选择出对预测最有用的特征。  综上所述，选择全部特征不仅能够覆盖设备运行的全面信息，还能为未来的模型优化和特征筛选提供充分的数据基础。"
+          ],
+          "在选择对预测目标最有用的特征时，需要综合考虑每个特征的统计信息（如均值和方差）、它们的物理意义（即它们在设备中的重要性）以及数据的整体分布。基于提供的信息，没有历史故障模式和最近的反馈，意味着我们无法从故障历史或反馈中提取额外的信息来决定特征的重要性。因此，我选择考虑所有提供的特征，原因如下：  1. **特征分布与多样性**: - 所有特征均呈现出不同的均值和方差，证明它们含有不同的信息。 - 这些特征包括了电流、电压、功率、温度和波长等多种物理属性，可以全面反映设备的运行状态，所以保留这些多样化的特征有助于建立一个更全面的模型。  2. **特征与设备状态的相关性**: - 电流（bias current 和电源电流）、功率（接收功率和传输功率）、温度和电压都是设备的重要指标，可以反映设备的健康状态和潜在故障。因此，它们在预测目标变量可能会有较大的作用。  3. **数据完整性和多层次信息**: - 通过综合这些不同类别的特征，我们可以捕捉到设备状态的多层次信息，减少遗漏关键特征的风险。  鉴于目前没有故障模式和反馈数据提供进一步的信息，因此保留所有特征，有助于确保在后续数据分析和"
+        ]
+      ]
     ],
     "feature_selection_result": [
-      {
-        "num_samples": 1626,
-        "num_features": 15,
-        "feature_names": [
-          "ib_device_stat_bias_current_c_0",
-          "ib_device_stat_bias_current_c_1",
-          "ib_device_stat_bias_current_c_2",
-          "ib_device_stat_bias_current_c_3",
-          "ib_device_stat_rx_power_current_c_0",
-          "ib_device_stat_rx_power_current_c_1",
-          "ib_device_stat_rx_power_current_c_2",
-          "ib_device_stat_rx_power_current_c_3",
-          "ib_device_stat_temperature",
-          "ib_device_stat_tx_power_current_c_0",
-          "ib_device_stat_tx_power_current_c_1",
-          "ib_device_stat_tx_power_current_c_2",
-          "ib_device_stat_tx_power_current_c_3",
-          "ib_device_stat_voltage",
-          "ib_device_stat_wavelength"
+      [
+        [
+          [
+            {
+              "num_samples": 1626,
+              "num_features": 15,
+              "feature_names": [
+                "ib_device_stat_bias_current_c_0",
+                "ib_device_stat_bias_current_c_1",
+                "ib_device_stat_bias_current_c_2",
+                "ib_device_stat_bias_current_c_3",
+                "ib_device_stat_rx_power_current_c_0",
+                "ib_device_stat_rx_power_current_c_1",
+                "ib_device_stat_rx_power_current_c_2",
+                "ib_device_stat_rx_power_current_c_3",
+                "ib_device_stat_temperature",
+                "ib_device_stat_tx_power_current_c_0",
+                "ib_device_stat_tx_power_current_c_1",
+                "ib_device_stat_tx_power_current_c_2",
+                "ib_device_stat_tx_power_current_c_3",
+                "ib_device_stat_voltage",
+                "ib_device_stat_wavelength"
+              ]
+            }
+          ],
+          {
+            "num_samples": 1626,
+            "num_features": 15,
+            "feature_names": [
+              "ib_device_stat_bias_current_c_0",
+              "ib_device_stat_bias_current_c_1",
+              "ib_device_stat_bias_current_c_2",
+              "ib_device_stat_bias_current_c_3",
+              "ib_device_stat_rx_power_current_c_0",
+              "ib_device_stat_rx_power_current_c_1",
+              "ib_device_stat_rx_power_current_c_2",
+              "ib_device_stat_rx_power_current_c_3",
+              "ib_device_stat_temperature",
+              "ib_device_stat_tx_power_current_c_0",
+              "ib_device_stat_tx_power_current_c_1",
+              "ib_device_stat_tx_power_current_c_2",
+              "ib_device_stat_tx_power_current_c_3",
+              "ib_device_stat_voltage",
+              "ib_device_stat_wavelength"
+            ]
+          }
         ]
-      }
+      ]
     ],
     "data_characteristics": [
-      {
-        "window_size": 9,
-        "selected_features": [
-          "ib_device_stat_bias_current_c_0",
-          "ib_device_stat_bias_current_c_1",
-          "ib_device_stat_bias_current_c_2",
-          "ib_device_stat_bias_current_c_3",
-          "ib_device_stat_rx_power_current_c_0",
-          "ib_device_stat_rx_power_current_c_1",
-          "ib_device_stat_rx_power_current_c_2",
-          "ib_device_stat_rx_power_current_c_3",
-          "ib_device_stat_temperature",
-          "ib_device_stat_tx_power_current_c_0",
-          "ib_device_stat_tx_power_current_c_1",
-          "ib_device_stat_tx_power_current_c_2",
-          "ib_device_stat_tx_power_current_c_3",
-          "ib_device_stat_voltage",
-          "ib_device_stat_wavelength"
+      [
+        [
+          [
+            {
+              "window_size": 9,
+              "selected_features": [
+                "ib_device_stat_bias_current_c_0",
+                "ib_device_stat_bias_current_c_1",
+                "ib_device_stat_bias_current_c_2",
+                "ib_device_stat_bias_current_c_3",
+                "ib_device_stat_rx_power_current_c_0",
+                "ib_device_stat_rx_power_current_c_1",
+                "ib_device_stat_rx_power_current_c_2",
+                "ib_device_stat_rx_power_current_c_3",
+                "ib_device_stat_temperature",
+                "ib_device_stat_tx_power_current_c_0",
+                "ib_device_stat_tx_power_current_c_1",
+                "ib_device_stat_tx_power_current_c_2",
+                "ib_device_stat_tx_power_current_c_3",
+                "ib_device_stat_voltage",
+                "ib_device_stat_wavelength"
+              ]
+            }
+          ],
+          {
+            "window_size": 9,
+            "selected_features": [
+              "ib_device_stat_bias_current_c_0",
+              "ib_device_stat_bias_current_c_1",
+              "ib_device_stat_bias_current_c_2",
+              "ib_device_stat_bias_current_c_3",
+              "ib_device_stat_rx_power_current_c_0",
+              "ib_device_stat_rx_power_current_c_1",
+              "ib_device_stat_rx_power_current_c_2",
+              "ib_device_stat_rx_power_current_c_3",
+              "ib_device_stat_temperature",
+              "ib_device_stat_tx_power_current_c_0",
+              "ib_device_stat_tx_power_current_c_1",
+              "ib_device_stat_tx_power_current_c_2",
+              "ib_device_stat_tx_power_current_c_3",
+              "ib_device_stat_voltage",
+              "ib_device_stat_wavelength"
+            ]
+          }
         ]
+      ]
+    ],
+    "data_selection": [
+      [
+        {
+          "time_period": {
+            "开始时间": "2024-06-20T17:00:00",
+            "结束时间": "2024-10-05T16:00:00"
+          },
+          "train_ratio": 0.8,
+          "sample_counts": {
+            "总样本数": 1626,
+            "选择的样本数": 1617,
+            "训练集样本数": 1293,
+            "测试集样本数": 324
+          },
+          "explanation": "选择这个时间段的原因是数据的时间范围从2024-06-20 09:20:00到2024-10-05 08:20:00，涵盖了整个可用的数据期间。为了确保数据集的多样性和代表性，我决定使用整段时间的数据来训练模型。由于没有提供明确的历史故障模式或特定时间点的反馈数据，我们无法基于历史模式做出进一步细化的选择。因此，使用整个时间段的数据能够帮助模型捕捉更广泛的时间序列特征和多样性。  另外，数据标签的分布是均等的，即“0”和“1”各占50%，说明这是一个平衡的分类问题。在这种情况下，没有必要为了平衡标签分布而对时间段进行特意选择。  选择80%的数据作为训练集比例是一个经验法则，在许多机器学习任务中证明是有效的。80%的训练比例能够提供充足的数据量用于模型训练，确保模型能够学习到可能的各种特征模式，同时剩下的20%数据作为验证集，对模型进行性能评估，以避免过拟合。通过这种设置，我们能够在不损失多样性和代表性的前提下，优化模型训练和验证的效果。"
+        }
+      ],
+      {
+        "time_period": {
+          "开始时间": "2024-06-20T17:00:00",
+          "结束时间": "2024-10-05T16:00:00"
+        },
+        "train_ratio": 0.8,
+        "sample_counts": {
+          "总样本数": 1626,
+          "选择的样本数": 1617,
+          "训练集样本数": 1293,
+          "测试集样本数": 324
+        },
+        "explanation": "1. **时间段选择理由**：  - **数据多样性与代表性**： 考虑到数据的时间范围从 2024-06-20 到 2024-10-05，这个时间段覆盖了整个数据集。尽可能利用全部数据可以确保模型见过最多的场景，提高模型在实际应用中的适用性。  - **季节性与长期趋势**： 覆盖整个时间范围有助于捕捉所有可能的季节性变化和长期趋势，这对于网络故障预测十分重要，因为很多网络故障可能与季节性变化和长期趋势密切相关。  - **标签分布**： 数据标签分布是平衡的 (0.5, 0.5)，这意味着每个类别具有相同的样本数量，使得模型不会偏向于某个特定类别。因此，选择整个时间段既不会对平衡的标签分布造成影响，也确保了模型能够基于全面数据进行训练。  2. **训练集比例选择**：  - **0.8 的比例**： 选择80%作为训练集比例是因为这是一个常见的、经验性较好的选择，能够在保证足够数据用于训练模型的同时，保留适量的数据用于模型验证和测试。这样可以更加准确地评估模型的性能，避免过拟合或者欠拟合。  - **模型性能评估**： 没有提供现有模型性能或反馈，因此使用80% - 20%的数据分割比例是一个保守且合理的选择，能够保证模型有足够的数据进行训练，同时有满意的数据用于模型评估。  - **历史模式缺失**： 由于没有历史故障模式的参考，我们需要尽可能利用手头上的全部数据来确保模型训练的全面性和代表性，以便更好地挖掘潜在的故障模式。  综上所述，综合考虑到数据的多样性、代表性、标签分布的平衡性和合理"
       }
     ]
   },
@@ -176,206 +352,334 @@
     "feature_list": [
       [
         [
-          "ib_device_stat_bias_current_c_0",
-          "ib_device_stat_bias_current_c_1",
-          "ib_device_stat_bias_current_c_2",
-          "ib_device_stat_bias_current_c_3",
-          "ib_device_stat_rx_power_current_c_0",
-          "ib_device_stat_rx_power_current_c_1",
-          "ib_device_stat_rx_power_current_c_2",
-          "ib_device_stat_rx_power_current_c_3",
-          "ib_device_stat_temperature",
-          "ib_device_stat_tx_power_current_c_0",
-          "ib_device_stat_tx_power_current_c_1",
-          "ib_device_stat_tx_power_current_c_2",
-          "ib_device_stat_tx_power_current_c_3",
-          "ib_device_stat_voltage",
-          "ib_device_stat_wavelength"
+          [
+            [
+              [
+                "ib_device_stat_bias_current_c_0",
+                "ib_device_stat_bias_current_c_1",
+                "ib_device_stat_bias_current_c_2",
+                "ib_device_stat_bias_current_c_3",
+                "ib_device_stat_rx_power_current_c_0",
+                "ib_device_stat_rx_power_current_c_1",
+                "ib_device_stat_rx_power_current_c_2",
+                "ib_device_stat_rx_power_current_c_3",
+                "ib_device_stat_temperature",
+                "ib_device_stat_tx_power_current_c_0",
+                "ib_device_stat_tx_power_current_c_1",
+                "ib_device_stat_tx_power_current_c_2",
+                "ib_device_stat_tx_power_current_c_3",
+                "ib_device_stat_voltage",
+                "ib_device_stat_wavelength"
+              ]
+            ]
+          ]
         ]
       ]
     ],
     "time_step": [
       [
-        600
+        [
+          [
+            [
+              600
+            ]
+          ]
+        ]
       ]
     ],
     "feature_stats": [
-      {
-        "ib_device_stat_bias_current_c_0": {
-          "min": 0.0,
-          "max": 9.336,
-          "mean": 8.0410766434664
-        },
-        "ib_device_stat_bias_current_c_1": {
-          "min": 0.0,
-          "max": 9.336,
-          "mean": 8.05645151173001
-        },
-        "ib_device_stat_bias_current_c_2": {
-          "min": 0.0,
-          "max": 9.336,
-          "mean": 8.057377075231043
-        },
-        "ib_device_stat_bias_current_c_3": {
-          "min": 0.0,
-          "max": 9.336,
-          "mean": 8.0558274578681
-        },
-        "ib_device_stat_rx_power_current_c_0": {
-          "min": -40.0,
-          "max": 2.41,
-          "mean": 0.5853278671595866
-        },
-        "ib_device_stat_rx_power_current_c_1": {
-          "min": -40.0,
-          "max": 2.688,
-          "mean": 0.4459433571697403
-        },
-        "ib_device_stat_rx_power_current_c_2": {
-          "min": -40.0,
-          "max": 2.574,
-          "mean": 0.5331718521306403
-        },
-        "ib_device_stat_rx_power_current_c_3": {
-          "min": -40.0,
-          "max": 2.41,
-          "mean": 0.5834336553339194
-        },
-        "ib_device_stat_temperature": {
-          "min": 26.0,
-          "max": 62.0,
-          "mean": 41.29866308217685
-        },
-        "ib_device_stat_tx_power_current_c_0": {
-          "min": -40.0,
-          "max": 3.736,
-          "mean": 1.0218012143993074
-        },
-        "ib_device_stat_tx_power_current_c_1": {
-          "min": -40.0,
-          "max": 3.583,
-          "mean": 1.0498502279095048
-        },
-        "ib_device_stat_tx_power_current_c_2": {
-          "min": -40.0,
-          "max": 3.46,
-          "mean": 1.0039960272655042
-        },
-        "ib_device_stat_tx_power_current_c_3": {
-          "min": -40.0,
-          "max": 3.736,
-          "mean": 1.0245029272780506
-        },
-        "ib_device_stat_voltage": {
-          "min": 3215.3,
-          "max": 3297.0,
-          "mean": 3241.245218958915
-        },
-        "ib_device_stat_wavelength": {
-          "min": 850.0,
-          "max": 854.0,
-          "mean": 853.9287056733926
-        }
-      }
+      [
+        [
+          [
+            {
+              "ib_device_stat_bias_current_c_0": {
+                "min": 0.0,
+                "max": 9.336,
+                "mean": 8.0410766434664
+              },
+              "ib_device_stat_bias_current_c_1": {
+                "min": 0.0,
+                "max": 9.336,
+                "mean": 8.05645151173001
+              },
+              "ib_device_stat_bias_current_c_2": {
+                "min": 0.0,
+                "max": 9.336,
+                "mean": 8.057377075231043
+              },
+              "ib_device_stat_bias_current_c_3": {
+                "min": 0.0,
+                "max": 9.336,
+                "mean": 8.0558274578681
+              },
+              "ib_device_stat_rx_power_current_c_0": {
+                "min": -40.0,
+                "max": 2.41,
+                "mean": 0.5853278671595866
+              },
+              "ib_device_stat_rx_power_current_c_1": {
+                "min": -40.0,
+                "max": 2.688,
+                "mean": 0.4459433571697403
+              },
+              "ib_device_stat_rx_power_current_c_2": {
+                "min": -40.0,
+                "max": 2.574,
+                "mean": 0.5331718521306403
+              },
+              "ib_device_stat_rx_power_current_c_3": {
+                "min": -40.0,
+                "max": 2.41,
+                "mean": 0.5834336553339194
+              },
+              "ib_device_stat_temperature": {
+                "min": 26.0,
+                "max": 62.0,
+                "mean": 41.29866308217685
+              },
+              "ib_device_stat_tx_power_current_c_0": {
+                "min": -40.0,
+                "max": 3.736,
+                "mean": 1.0218012143993074
+              },
+              "ib_device_stat_tx_power_current_c_1": {
+                "min": -40.0,
+                "max": 3.583,
+                "mean": 1.0498502279095048
+              },
+              "ib_device_stat_tx_power_current_c_2": {
+                "min": -40.0,
+                "max": 3.46,
+                "mean": 1.0039960272655042
+              },
+              "ib_device_stat_tx_power_current_c_3": {
+                "min": -40.0,
+                "max": 3.736,
+                "mean": 1.0245029272780506
+              },
+              "ib_device_stat_voltage": {
+                "min": 3215.3,
+                "max": 3297.0,
+                "mean": 3241.245218958915
+              },
+              "ib_device_stat_wavelength": {
+                "min": 850.0,
+                "max": 854.0,
+                "mean": 853.9287056733926
+              }
+            }
+          ]
+        ]
+      ]
     ],
     "feature_selection": [
-      {
-        "feature_stats": {
-          "ib_device_stat_bias_current_c_0": {
-            "min": 0.0,
-            "max": 9.336,
-            "mean": 8.0410766434664
-          },
-          "ib_device_stat_bias_current_c_1": {
-            "min": 0.0,
-            "max": 9.336,
-            "mean": 8.05645151173001
-          },
-          "ib_device_stat_bias_current_c_2": {
-            "min": 0.0,
-            "max": 9.336,
-            "mean": 8.057377075231043
-          },
-          "ib_device_stat_bias_current_c_3": {
-            "min": 0.0,
-            "max": 9.336,
-            "mean": 8.0558274578681
-          },
-          "ib_device_stat_rx_power_current_c_0": {
-            "min": -40.0,
-            "max": 2.41,
-            "mean": 0.5853278671595866
-          },
-          "ib_device_stat_rx_power_current_c_1": {
-            "min": -40.0,
-            "max": 2.688,
-            "mean": 0.4459433571697403
-          },
-          "ib_device_stat_rx_power_current_c_2": {
-            "min": -40.0,
-            "max": 2.574,
-            "mean": 0.5331718521306403
-          },
-          "ib_device_stat_rx_power_current_c_3": {
-            "min": -40.0,
-            "max": 2.41,
-            "mean": 0.5834336553339194
-          },
-          "ib_device_stat_temperature": {
-            "min": 26.0,
-            "max": 62.0,
-            "mean": 41.29866308217685
-          },
-          "ib_device_stat_tx_power_current_c_0": {
-            "min": -40.0,
-            "max": 3.736,
-            "mean": 1.0218012143993074
-          },
-          "ib_device_stat_tx_power_current_c_1": {
-            "min": -40.0,
-            "max": 3.583,
-            "mean": 1.0498502279095048
-          },
-          "ib_device_stat_tx_power_current_c_2": {
-            "min": -40.0,
-            "max": 3.46,
-            "mean": 1.0039960272655042
-          },
-          "ib_device_stat_tx_power_current_c_3": {
-            "min": -40.0,
-            "max": 3.736,
-            "mean": 1.0245029272780506
-          },
-          "ib_device_stat_voltage": {
-            "min": 3215.3,
-            "max": 3297.0,
-            "mean": 3241.245218958915
-          },
-          "ib_device_stat_wavelength": {
-            "min": 850.0,
-            "max": 854.0,
-            "mean": 853.9287056733926
+      [
+        [
+          [
+            {
+              "feature_stats": {
+                "ib_device_stat_bias_current_c_0": {
+                  "min": 0.0,
+                  "max": 9.336,
+                  "mean": 8.0410766434664
+                },
+                "ib_device_stat_bias_current_c_1": {
+                  "min": 0.0,
+                  "max": 9.336,
+                  "mean": 8.05645151173001
+                },
+                "ib_device_stat_bias_current_c_2": {
+                  "min": 0.0,
+                  "max": 9.336,
+                  "mean": 8.057377075231043
+                },
+                "ib_device_stat_bias_current_c_3": {
+                  "min": 0.0,
+                  "max": 9.336,
+                  "mean": 8.0558274578681
+                },
+                "ib_device_stat_rx_power_current_c_0": {
+                  "min": -40.0,
+                  "max": 2.41,
+                  "mean": 0.5853278671595866
+                },
+                "ib_device_stat_rx_power_current_c_1": {
+                  "min": -40.0,
+                  "max": 2.688,
+                  "mean": 0.4459433571697403
+                },
+                "ib_device_stat_rx_power_current_c_2": {
+                  "min": -40.0,
+                  "max": 2.574,
+                  "mean": 0.5331718521306403
+                },
+                "ib_device_stat_rx_power_current_c_3": {
+                  "min": -40.0,
+                  "max": 2.41,
+                  "mean": 0.5834336553339194
+                },
+                "ib_device_stat_temperature": {
+                  "min": 26.0,
+                  "max": 62.0,
+                  "mean": 41.29866308217685
+                },
+                "ib_device_stat_tx_power_current_c_0": {
+                  "min": -40.0,
+                  "max": 3.736,
+                  "mean": 1.0218012143993074
+                },
+                "ib_device_stat_tx_power_current_c_1": {
+                  "min": -40.0,
+                  "max": 3.583,
+                  "mean": 1.0498502279095048
+                },
+                "ib_device_stat_tx_power_current_c_2": {
+                  "min": -40.0,
+                  "max": 3.46,
+                  "mean": 1.0039960272655042
+                },
+                "ib_device_stat_tx_power_current_c_3": {
+                  "min": -40.0,
+                  "max": 3.736,
+                  "mean": 1.0245029272780506
+                },
+                "ib_device_stat_voltage": {
+                  "min": 3215.3,
+                  "max": 3297.0,
+                  "mean": 3241.245218958915
+                },
+                "ib_device_stat_wavelength": {
+                  "min": 850.0,
+                  "max": 854.0,
+                  "mean": 853.9287056733926
+                }
+              },
+              "selected_features": [
+                "ib_device_stat_bias_current_c_0",
+                "ib_device_stat_bias_current_c_1",
+                "ib_device_stat_bias_current_c_2",
+                "ib_device_stat_bias_current_c_3",
+                "ib_device_stat_rx_power_current_c_0",
+                "ib_device_stat_rx_power_current_c_1",
+                "ib_device_stat_rx_power_current_c_2",
+                "ib_device_stat_rx_power_current_c_3",
+                "ib_device_stat_temperature",
+                "ib_device_stat_tx_power_current_c_0",
+                "ib_device_stat_tx_power_current_c_1",
+                "ib_device_stat_tx_power_current_c_2",
+                "ib_device_stat_tx_power_current_c_3",
+                "ib_device_stat_voltage",
+                "ib_device_stat_wavelength"
+              ],
+              "window_size": 9
+            }
+          ],
+          {
+            "feature_stats": [
+              {
+                "timestamp": 1729508172,
+                "data": [
+                  {
+                    "ib_device_stat_bias_current_c_0": {
+                      "min": 0.0,
+                      "max": 9.336,
+                      "mean": 8.0410766434664
+                    },
+                    "ib_device_stat_bias_current_c_1": {
+                      "min": 0.0,
+                      "max": 9.336,
+                      "mean": 8.05645151173001
+                    },
+                    "ib_device_stat_bias_current_c_2": {
+                      "min": 0.0,
+                      "max": 9.336,
+                      "mean": 8.057377075231043
+                    },
+                    "ib_device_stat_bias_current_c_3": {
+                      "min": 0.0,
+                      "max": 9.336,
+                      "mean": 8.0558274578681
+                    },
+                    "ib_device_stat_rx_power_current_c_0": {
+                      "min": -40.0,
+                      "max": 2.41,
+                      "mean": 0.5853278671595866
+                    },
+                    "ib_device_stat_rx_power_current_c_1": {
+                      "min": -40.0,
+                      "max": 2.688,
+                      "mean": 0.4459433571697403
+                    },
+                    "ib_device_stat_rx_power_current_c_2": {
+                      "min": -40.0,
+                      "max": 2.574,
+                      "mean": 0.5331718521306403
+                    },
+                    "ib_device_stat_rx_power_current_c_3": {
+                      "min": -40.0,
+                      "max": 2.41,
+                      "mean": 0.5834336553339194
+                    },
+                    "ib_device_stat_temperature": {
+                      "min": 26.0,
+                      "max": 62.0,
+                      "mean": 41.29866308217685
+                    },
+                    "ib_device_stat_tx_power_current_c_0": {
+                      "min": -40.0,
+                      "max": 3.736,
+                      "mean": 1.0218012143993074
+                    },
+                    "ib_device_stat_tx_power_current_c_1": {
+                      "min": -40.0,
+                      "max": 3.583,
+                      "mean": 1.0498502279095048
+                    },
+                    "ib_device_stat_tx_power_current_c_2": {
+                      "min": -40.0,
+                      "max": 3.46,
+                      "mean": 1.0039960272655042
+                    },
+                    "ib_device_stat_tx_power_current_c_3": {
+                      "min": -40.0,
+                      "max": 3.736,
+                      "mean": 1.0245029272780506
+                    },
+                    "ib_device_stat_voltage": {
+                      "min": 3215.3,
+                      "max": 3297.0,
+                      "mean": 3241.245218958915
+                    },
+                    "ib_device_stat_wavelength": {
+                      "min": 850.0,
+                      "max": 854.0,
+                      "mean": 853.9287056733926
+                    }
+                  }
+                ]
+              }
+            ],
+            "selected_features": [
+              "ib_device_stat_bias_current_c_0",
+              "ib_device_stat_bias_current_c_1",
+              "ib_device_stat_bias_current_c_2",
+              "ib_device_stat_bias_current_c_3",
+              "ib_device_stat_rx_power_current_c_0",
+              "ib_device_stat_rx_power_current_c_1",
+              "ib_device_stat_rx_power_current_c_2",
+              "ib_device_stat_rx_power_current_c_3",
+              "ib_device_stat_temperature",
+              "ib_device_stat_tx_power_current_c_0",
+              "ib_device_stat_tx_power_current_c_1",
+              "ib_device_stat_tx_power_current_c_2",
+              "ib_device_stat_tx_power_current_c_3",
+              "ib_device_stat_voltage",
+              "ib_device_stat_wavelength"
+            ],
+            "window_size": 9
           }
-        },
-        "selected_features": [
-          "ib_device_stat_bias_current_c_0",
-          "ib_device_stat_bias_current_c_1",
-          "ib_device_stat_bias_current_c_2",
-          "ib_device_stat_bias_current_c_3",
-          "ib_device_stat_rx_power_current_c_0",
-          "ib_device_stat_rx_power_current_c_1",
-          "ib_device_stat_rx_power_current_c_2",
-          "ib_device_stat_rx_power_current_c_3",
-          "ib_device_stat_temperature",
-          "ib_device_stat_tx_power_current_c_0",
-          "ib_device_stat_tx_power_current_c_1",
-          "ib_device_stat_tx_power_current_c_2",
-          "ib_device_stat_tx_power_current_c_3",
-          "ib_device_stat_voltage",
-          "ib_device_stat_wavelength"
-        ],
-        "window_size": 9
-      }
+        ]
+      ]
     ]
   }
 }
