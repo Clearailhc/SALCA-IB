@@ -15,20 +15,22 @@ class TimeSeriesSample:
     - feature_names: 列表，包含所有特征的名称。
     """
 
-    def __init__(self, features, label, timestamp, feature_names):
+    def __init__(self, timestamp, features, label, feature_names, split=None):
         """
         初始化 TimeSeriesSample 对象。
 
         Args:
+            timestamp (np.array): 一维数组，表示时间戳。
             features (np.array): 二维数组，形状为 (时间步数, 特征数)。
             label (int): 样本的标签。
-            timestamp (np.array): 一维数组，表示时间戳。
             feature_names (list): 特征名称列表。
+            split (object, optional): 分割信息。 Defaults to None.
         """
+        self.timestamp = timestamp
         self.features = features
         self.label = label
-        self.timestamp = timestamp
         self.feature_names = feature_names
+        self.split = split  # 添加 split 属性
         self.preprocessed_features = None
 
     def preprocess(self, all_feature_names, max_time_steps, window_size, scaler):
@@ -166,10 +168,11 @@ class TimeSeriesSample:
         """
         data = json.loads(json_str)
         sample = cls(
-            np.array(data['features']),
-            data['label'],
-            np.array(data['timestamp']),
-            data['feature_names']
+            timestamp=data['timestamp'],
+            features=data['features'],
+            label=data['label'],
+            feature_names=data.get('feature_names', []),
+            split=data.get('split')  # 从 JSON 中获取 split
         )
         if 'preprocessed_features' in data:
             sample.preprocessed_features = np.array(data['preprocessed_features'])
@@ -187,7 +190,7 @@ class TimeSeriesSample:
         """
         # 创建一个包含所有特征的新矩阵，初始值为0
         try: 
-            self.feature_stats = feature_stats[-1]['data'][-1]
+            self.feature_stats = feature_stats[-1]['data']
         except:
             self.feature_stats = feature_stats
         full_features = np.full((self.features.shape[0], len(all_feature_names)), 0.0)
@@ -226,3 +229,12 @@ class TimeSeriesSample:
         # 调整时间戳以匹配预处理后的特征数量
         self.timestamp = self.timestamp[-window_size:]
         self.feature_names = all_feature_names
+
+    def to_dict(self):
+        return {
+            'timestamp': self.timestamp,
+            'features': self.features,
+            'label': self.label,
+            'feature_names': self.feature_names,
+            'split': self.split  # 包含 split 在字典中
+        }

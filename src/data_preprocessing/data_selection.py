@@ -192,6 +192,7 @@ def save_selected_data(train_samples, test_samples, output_path):
             sample_dict = {
                 'timestamp': sample.timestamp.tolist(),
                 'features': sample.features.tolist(),
+                'feature_names': sample.feature_names,  # 添加 feature_names 字段
                 'label': int(sample.label),
                 'split': 'train' if sample in train_samples else 'test'
             }

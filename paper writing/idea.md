@@ -73,7 +73,7 @@ SALCA-IB: Self-Adaptive LLM-Driven Continuous Learning Agent for IB Network Fail
 
 1. 创新的LLM驱动自适应Agent架构（SALCA-IB）：
    提出了一个以LLM为核心的自适应Agent系统，专门用于IB网络故障预测。该系统将LLM作为决策中枢，实现了模型选择、参数优化和持续学习的智能自动化。通过LLM与传统机器学习模型的协同优化，SALCA-IB有效提高了预测准确性和系统适应性。具体创新点包括：
-   - LLM驱动的智能数据选择机制，有效应对数据稀缺问题；
+   - LLM驱动的智能数据选择���制，有效应对数据稀缺问题；
    - 基于LLM的动态模型选择和集成策略，提高系统对网络状态变化的适应能力；
    - LLM辅助的可解释性反馈生成，增强了系统的可信度和实用性。
 
@@ -108,6 +108,86 @@ IB网络故障预测在高性能计算和数据中心运维中至关重要，但
 InfiniBand Network (IB Network) failure prediction is crucial in high-performance computing and data center operations, yet faces significant challenges due to environmental complexity and dynamicity, such as scarcity of failure data and susceptibility of network feature distributions to external factors. This paper introduces \textbf{SALCA-IB} (Self-Adaptive LLM-Driven Continuous Learning Agent for IB Network Failure Prediction), an innovative adaptive failure prediction agentic system. SALCA-IB utilizes a Large Language Model (LLM) as its planning core, combined with traditional machine learning methods, to achieve autonomous prediction and optimization. The system's main innovations include: (1) LLM-driven autonomous data selection and model optimization; (2) A fusion memory system integrating short-term and long-term memory; and (3) LLM-supported automatic evaluation feedback and closed-loop optimization. Experimental results show that compared to traditional methods, SALCA-IB improves prediction accuracy by X\% and demonstrates a Y-fold increase when facing changes in network feature distributions. Our code is available at XXXX.github.com.
 
 **Keywords:** IB Network, Large Language Model, Autonomous Agent, Memory System
+
+## Introduction
+   <!-- 1. 背景铺垫 (Background)
+   IB网络在现代高性能计算和数据中心中的关键地位
+   网络故障预测的重要性和实际价值
+   当前IB网络运维面临的主要挑战
+   2. 问题陈述 (Problem Statement)
+   IB网络故障预测的三个核心难点：
+   故障数据稀缺性
+   网络特征分布的动态变化
+   预测系统缺乏自适应能力
+   现有方法的局限性
+   3. 研究动机 (Motivation)
+   LLM在复杂决策中的潜力
+   智能记忆系统对持续学习的重要性
+   自适应系统在动态环境中的优势
+   4. 本文方案 (Proposed Solution)
+   SALCA-IB系统的核心思想
+   主要创新点概述
+   与现有方法的关键区别
+   5. 主要贡献 (Contributions)
+   LLM驱动的自适应Agent架构
+   融合短期和长期记忆的智能记忆系统
+   自适应多模型集成与持续优化机制
+   实验验证的性能提升
+   6. 论文结构说明 (Paper Organization)
+   简要介绍后续各节内容的组织方式 -->
+
+\section{Introduction}
+High-performance computing and modern data centers heavily rely on InfiniBand (IB) networks for their superior performance in low-latency, high-bandwidth communication. As the backbone of these critical infrastructures, IB networks' reliability directly impacts the overall system performance and service availability. However, network failures can lead to severe service disruptions and significant performance degradation, making failure prediction increasingly crucial for maintaining system reliability and operational efficiency.
+
+Despite its importance, IB network failure prediction faces several significant challenges. First, failure data in IB networks is inherently scarce, as failures are relatively rare events, making it difficult to build robust prediction models using traditional machine learning approaches. Second, network feature distributions are highly dynamic and susceptible to various external factors, such as environmental conditions, hardware aging, and maintenance activities. Third, existing prediction systems often lack the ability to adapt to these changing conditions, resulting in degraded performance over time.
+
+Traditional approaches to network failure prediction primarily rely on static machine learning models or rule-based systems (ADD REF). While these methods have shown some success in controlled environments, they struggle to maintain performance in real-world scenarios where network characteristics evolve continuously (ADD REF). Moreover, existing solutions often operate as black boxes, providing limited interpretability and failing to leverage historical experience effectively for continuous improvement.
+ 
+The emergence of Large Language Models (LLMs) presents new opportunities for addressing these challenges. LLMs have demonstrated remarkable capabilities in complex reasoning and planning tasks (ADD REF) , suggesting their potential for orchestrating adaptive prediction systems. Additionally, recent advances in memory systems and continuous learning architectures (ADD REF) have shown promise in handling dynamic environments, though their application to network failure prediction remains largely unexplored.
+
+To address these challenges, we propose SALCA-IB (Self-Adaptive LLM-Driven Continuous Learning Agent for IB Network Failure Prediction), an innovative system that combines the reasoning and planning capabilities of LLMs with traditional machine learning models in a unified, adaptive framework. SALCA-IB introduces several key innovations that directly address the aforementioned challenges: 
+(1) To tackle the data scarcity issue, we develop an LLM-driven planning core that intelligently selects and utilizes limited training data, while orchestrating multiple lightweight models to maximize the value of available data;
+(2) To handle dynamic feature distributions, we design a dual-memory system that integrates both short-term and long-term experiences, enabling the system to capture and adapt to evolving network characteristics while maintaining historical knowledge;
+(3) To overcome the limitations of static prediction systems, we implement a continuous learning mechanism that enables real-time model updates and performance optimization, ensuring sustained prediction accuracy even as network conditions change.
+
+Experimental results demonstrate that SALCA-IB outperforms traditional methods in terms of prediction accuracy and adaptability, achieving X\% higher accuracy and Y-fold improvement in prediction performance when facing network feature distribution changes. Ablation studies further confirm the significant contributions of both the LLM-driven planning and dual-memory system components.
+
+To conclude, the main contributions of this paper are threefold:
+\begin{itemize}
+	\item We propose an innovative LLM-driven agent architecture (SALCA-IB) for IB network failure prediction. The system uniquely leverages LLM as a high-level planning core to orchestrate model selection, parameter optimization, and continuous learning strategies, while employing traditional machine learning models as efficient executors for real-time prediction tasks.
+	\item We design a novel dual-memory fusion system that seamlessly integrates short-term and long-term memory mechanisms. This sophisticated memory architecture enables rapid adaptation to dynamic network changes while preserving and leveraging valuable historical knowledge, significantly enhancing the system's robustness and adaptability.
+	\item We conduct comprehensive experiments on real-world IB network datasets to rigorously validate SALCA-IB's effectiveness. Through extensive ablation studies and comparative analyses, we demonstrate the substantial contributions of both the LLM-driven framework and the dual-memory system components to the overall system performance.
+\end{itemize}
+
+## Related Work
+
+### A. IB Network Failure Prediction
+
+Network failure prediction, particularly in IB networks, has been extensively studied due to its critical importance in maintaining system reliability. Traditional approaches primarily rely on statistical methods and machine learning models. XXX proposed a statistical analysis framework for predicting network failures based on historical performance metrics. XXX developed a deep learning approach using LSTM networks to capture temporal dependencies in network behavior patterns. However, these methods often struggle with the inherent data scarcity in failure scenarios and lack adaptability to changing network conditions.
+
+More recent work has attempted to address these challenges through ensemble methods and transfer learning. XXX introduced a multi-model ensemble approach to improve prediction robustness under limited data conditions. XXX explored transfer learning techniques to leverage knowledge from similar network environments. Despite these advances, existing methods still face significant challenges in handling dynamic network environments and maintaining long-term prediction accuracy.
+
+### B. LLM in System Planning and Optimization
+
+The application of Large Language Models (LLMs) in system planning and optimization represents an emerging research direction. XXX demonstrated LLM's capability in generating optimization strategies for complex systems, while XXX explored using LLMs for automated system configuration and parameter tuning. These studies highlight LLM's potential in understanding system behaviors and generating sophisticated planning strategies.
+
+In the context of network systems, XXX pioneered the use of LLMs for network management and optimization. XXX further showed how LLMs can be effectively combined with traditional machine learning models to enhance system performance. However, the application of LLMs specifically for network failure prediction remains largely unexplored, particularly in terms of continuous learning and adaptation.
+
+### C. Memory-Augmented Learning Systems
+
+Memory mechanisms have proven crucial for enhancing learning systems' long-term performance and adaptability. XXX introduced a dual-memory architecture that separates short-term and long-term memory components, enabling both rapid adaptation and stable long-term learning. XXX developed a memory-augmented neural network that demonstrates superior performance in dynamic environments.
+
+Recent advances in memory systems have focused on efficient memory retrieval and utilization. XXX proposed an attention-based memory access mechanism that improves memory utilization efficiency. XXX developed a hierarchical memory structure that enables more effective knowledge transfer across different tasks. These works provide valuable insights for designing memory systems, though their application in network failure prediction contexts remains limited.
+
+### D. Continuous Learning for Network Systems
+
+Continuous learning in network systems presents unique challenges due to evolving network conditions and changing failure patterns. XXX proposed an online learning framework that continuously updates prediction models based on new observations. XXX developed an adaptive learning system that automatically adjusts to network feature distribution changes.
+
+Recent work has increasingly focused on handling concept drift in network environments. XXX introduced a drift detection mechanism that triggers model updates when significant changes are detected. XXX proposed a sliding window approach that maintains prediction accuracy under varying network conditions. While these methods show promise, they often lack the sophisticated planning capabilities needed for complex network environments.
+
+Unlike previous work, our SALCA-IB system uniquely combines LLM-driven planning with a dual-memory architecture, enabling both intelligent strategy generation and effective knowledge retention. This novel approach addresses the limitations of existing methods while providing superior adaptability and prediction accuracy in dynamic IB network environments.
+
+
 
 
 ## 算法

@@ -38,7 +38,11 @@ class MemorySystem:
     def update_memory(self, memory_type: str, key: str, value: Any) -> None:
         memory = self._get_memory_by_type(memory_type)
         if memory:
-            memory.add_data(key, value)
+            if isinstance(value, list):
+                for item in value:
+                    memory.add_data(key, item)
+            else:
+                memory.add_data(key, value)
         else:
             print(f"错误: 无效的记忆类型: {memory_type}")
 
@@ -104,15 +108,23 @@ class MemorySystem:
 
     @classmethod
     def load_from_json(cls, file_path):
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
         memory_system = cls()
         
         for memory_type in ['short_term', 'long_term']:
             if memory_type in data:
+                print(f"\n[{memory_type}] 加载详情：")
+                total_items = 0
                 for key, subdata in data[memory_type].items():
-                    memory_system.update_memory(memory_type, key, subdata)
+                    items_count = len(subdata)
+                    total_items += items_count
+                    for item in subdata:
+                        memory_system.update_memory(memory_type, key, item)
+                    print(f"  - {key}: {items_count} 条记录")
+                
+                print(f"[{memory_type}] 总计: {len(data[memory_type])} 个键，{total_items} 条记录")
         
         return memory_system
 
