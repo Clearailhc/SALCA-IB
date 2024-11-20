@@ -88,6 +88,14 @@ To conclude, the main contributions of this paper are threefold:
 	\item We conduct comprehensive experiments on real-world IB network datasets to rigorously validate SALCA-IB's effectiveness. Through extensive ablation studies and comparative analyses, we demonstrate the substantial contributions of both the LLM-driven framework and the dual-memory system components to the overall system performance.
 \end{itemize}
 
+\begin{figure*}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fig/agent.pdf}
+    \caption{Overview of SALCA-IB architecture. The system integrates (a) a model pool containing diverse deep learning models, (b) a multi-agent planning core for intelligent orchestration, (c) a dual-memory system for knowledge retention, and (d) a continuous learning process for adaptive optimization.}
+    \label{fig:salca-ib}
+\end{figure*}
+
+
 \section{Related Work}
 
 \subsection{IB Network Failure Prediction}
@@ -116,36 +124,283 @@ Recent work has increasingly focused on handling concept drift in network enviro
 
 Unlike previous work, our SALCA-IB system uniquely combines LLM-driven planning with a dual-memory architecture, enabling both intelligent strategy generation and effective knowledge retention. This novel approach addresses the limitations of existing methods while providing superior adaptability and prediction accuracy in dynamic IB network environments.
 
+%III. METHODOLOGY
 
-\begin{algorithm}
-\caption{SALCA-IB}
-\label{alg:salca-ib}
-\begin{algorithmic}[1]
-\Require IB network data $\mathcal{D}$, LLM $\mathcal{L}$, Model set $\mathcal{M}$, Short-term memory $Mem_{short}$, Long-term memory $Mem_{long}$, Max iterations $T_{max}$, Performance improvement threshold $\delta$
-\State $D_{train} = \mathcal{LLM}(\mathcal{D}, Mem_{long})$ \Comment{Train data selection}
-\State $(M, \theta, S) = \mathcal{LLM}(\mathcal{M}, Mem_{long})$ \Comment{Model, hyper parameters, and integration strategy selection}
-\State $M = f_{train}(M, \theta, S, D_{train})$ \Comment{Model training}
-\State $perf_{prev} = f_{eval}(M, D_{val})$ \Comment{Initial performance evaluation}
-\State $t = 0$ 
-\While{$t < T_{max}$ \textbf{and} $\Delta_{perf} > \delta$}
-    \State $P = M(D_{new})$ \Comment{Failure prediction}
-    \State $E = f_{eval}(P, D_{actual})$ \Comment{Evaluation}
-    \State $F = \mathcal{LLM}(E, M, \theta, S)$ \Comment{Generate feedback}
-    \State $Mem_{short} = f_{update}(Mem_{short}, P, E, F)$ \Comment{Memory Update}
-    \State $Mem_{long} = f_{update}(Mem_{long}, F, M, \theta, S)$
-    \State $(M, \theta, S, D_{train}) = \mathcal{LLM}(Mem_{short}, Mem_{long}$ \Comment{Adaptive optimization}
-    \State $M = f_{online\_train}(M, \theta, S, D_{new})$ \Comment{Online model update}
-    \State $perf_{current} = f_{eval}(M, D_{val})$ \Comment{Current performance evaluation}
-    \State $\Delta_{perf} = perf_{current} - perf_{prev}$
-    \State $perf_{prev} = perf_{current}$
-    \State $t = t + 1$ 
-\EndWhile
-\State \Return $M, \theta, S, Mem_{short}, Mem_{long}$ \Comment{Return evolved Agent}
-\end{algorithmic}
-\end{algorithm}
+%A. System Overview
+%- SALCA-IB的整体架构图和各模块关系
+%- 系统工作流程概述
+%- 各核心组件的功能简介
+%
+%B. LLM-Driven Planning Core
+%- LLM在系统中的核心规划职责
+%- 训练数据选择制 (对应算法第1行)
+%- 模型和参数选择策略 (对应算法第2行)
+%- 反馈生成机制 (对应算法第9行)
+%
+%C. Dual-Memory System
+%- 短期记忆和长期记忆的设计原理
+%- 短期记忆更新机 (对应算法第10行)
+%- 长期记忆更新机制 (对应算法第11行)
+%- 记忆检索和利用策略
+%
+%D. Continuous Learning and Optimization
+%- 在线学习机制 (对应算法第13行)
+%- 性能评估方法 (对应算法第14-16行)
+%- 自适应优化策略 (对应算法第12行)
+%- 终止条件设计 (对应���法的while循环条件)
+%
+%E. Model Integration and Deployment
+%- 多模型集成策略
+%- 实时预测流程
+%- 系统部署考虑
+%- 可扩展性设计
 
 
- 
+\section{SALCA-IB}
+
+SALCA-IB is designed as a self-adaptive intelligent system that leverages large language models (LLMs) to orchestrate network failure prediction in industrial blockchain environments. As illustrated in Fig. \ref{fig:salca-ib}, the system integrates four key components: an LLM-driven planning core, a dual-memory system, a deep learning model pool, and a continuous learning process.
+
+As shown in Algorithm \ref{alg:salca-ib}, the LLM planning core serves as the system's central intelligence, orchestrating model selection, data processing, and strategy optimization. The dual-memory system combines short-term memory for rapid response and long-term memory for knowledge retention, enabling both immediate adaptation and sustained optimization. The model pool comprises diverse deep learning models (FNN, LSTM, and Transformer) that serve as the execution layer for failure prediction. Through continuous learning, the system evaluates prediction outcomes and adjusts strategies dynamically, ensuring robust performance in evolving network conditions. The detailed design of each component is elaborated in the following sections.
+
+\subsection{LLM-Driven Planning Core}
+Traditional failure prediction systems often rely on static model architectures and fixed training strategies, limiting their effectiveness in dynamic IB environments. Our LLM-driven planning core addresses this challenge by orchestrating three key components: data selection, model configuration, and training strategy optimization, as shown in Fig. \ref{fig:salca-ib}.
+
+\subsubsection{Data Selection}
+The data selection module intelligently processes IB network data by leveraging historical knowledge stored in long-term memory. Given the network data $\mathcal{D}$ and memory state $Mem_{long}$, the LLM performs knowledge-driven selection:
+\begin{equation}
+    D_{train} = \mathcal{LLM}_{select}(\mathcal{D}, Mem_{long})
+\end{equation}
+
+The selection process involves three critical aspects:
+
+\textit{a) Temporal Window Selection}: Unlike traditional approaches that use fixed time windows, our system dynamically determines optimal training periods. This is crucial for IB networks where data patterns can be affected by external factors (e.g., network upgrades, environmental changes). The LLM analyzes historical performance patterns to identify periods with stable and representative network behavior:
+\begin{equation}
+    T_{window} = \arg\max_T Q_{stability}(T, Mem_{long})
+\end{equation}
+
+\textit{b) Feature Normalization}: We employ adaptive normalization strategies based on data characteristics:
+\begin{equation}
+    x_{norm} = \frac{x - \mu(T_{window})}{\sigma(T_{window})}
+\end{equation}
+where $\mu(T_{window})$ and $\sigma(T_{window})$ are calculated within the selected temporal window to avoid potential distribution shifts.
+
+\textit{c) Sample Quality Assessment}: The LLM agent evaluates data quality by analyzing both historical patterns and current network states:
+\begin{equation}
+    Q(D_{train}) = \mathcal{LLM}(D_{train}, Mem_{long}, T_{window})
+\end{equation}
+where the LLM agent considers multiple factors including data balance, temporal correlation, and reliability based on accumulated knowledge in $Mem_{long}$. This knowledge-driven assessment enables more flexible and context-aware data selection compared to traditional weighted scoring methods.
+
+\subsubsection{Model Configuration}
+The model configuration module dynamically selects and configures models based on both current requirements and historical performance. Given the model pool $\mathcal{M}$ and memory state $Mem_{long}$, the LLM performs configuration:
+\begin{equation}
+    (M_{set}, \theta, S) = \mathcal{LLM}_{config}(\mathcal{M}, Mem_{long})
+\end{equation}
+
+The configuration process involves three aspects:
+
+\textit{a) Model Selection}: The LLM selects appropriate models based on historical performance patterns and current network conditions. For example, LSTM models might be preferred for scenarios with strong temporal dependencies, while Transformers could be favored when long-range patterns are critical:
+\begin{equation}
+    M_{set} = \mathcal{LLM}_{select}(\mathcal{M}, Mem_{long})
+\end{equation}
+
+\textit{b) Parameter Configuration}: Instead of traditional hyperparameter optimization, the LLM leverages historical experience to directly configure model parameters:
+\begin{equation}
+    \theta = \mathcal{LLM}_{config}(M_{set}, Mem_{long})
+\end{equation}
+
+\textit{c) Integration Strategy}: The LLM determines the optimal ensemble strategy based on selected models' characteristics:
+\begin{equation}
+    M_{ensemble} = TrainEnsemble(M_{set}, \theta, S, D_{train})
+\end{equation}
+
+\subsubsection{Training Strategy}
+The training strategy module optimizes the learning process through LLM-driven decisions. The optimization process considers:
+
+\textit{a) Performance Evaluation}: The LLM evaluates current model performance:
+\begin{equation}
+    E = Evaluate(P_{failures}, R_{failures})
+\end{equation}
+
+\textit{b) Feedback Generation}: Based on evaluation results, the LLM generates optimization feedback:
+\begin{equation}
+    F = \mathcal{LLM}_{feedback}(E, M_{ensemble}, \theta, S)
+\end{equation}
+
+\textit{c) Model Update}: The ensemble model is continuously updated based on the feedback:
+\begin{equation}
+    M_{ensemble} = UpdateEnsemble(M_{set}, \theta, S, D_{new})
+\end{equation}
+
+Through these mechanisms, our system achieves dynamic model selection and training optimization, leveraging both historical knowledge and current network states for improved prediction performance.
+
+\subsection{Dual-Memory System}
+Traditional single-memory approaches often struggle to balance immediate adaptability with long-term knowledge retention in dynamic network environments. Moreover, directly feeding extensive historical data to LLMs can lead to context overflow and degraded planning performance. To address these limitations, we propose a dual-memory system that enables both efficient LLM-based decision making and effective knowledge preservation.
+
+\subsubsection{Memory Architecture}
+The dual-memory system consists of two complementary components: short-term memory $Mem_{short}$ and long-term memory $Mem_{long}$. This separation serves two key purposes: (1) enabling rapid response through focused recent information, and (2) managing LLM's context length limitation through structured historical knowledge representation.
+
+\textit{a) Short-term Memory Structure}: The short-term memory maintains recent operational states and decisions. For operational efficiency, it stores current feature set $F_{set}$ with selection rationale, time window configurations $T_{window}$, and model performance metrics $P_{model}$ including accuracy, precision, recall and F1-score. Additionally, it records current model configurations $M_{config}$ with ensemble strategies and data characteristics $D_{char}$ for rapid access. The short-term memory is formalized as:
+\begin{equation}
+    Mem_{short} = \{(F_{set}, T_{window}, P_{model}, M_{config}, D_{char})\}
+\end{equation}
+
+\textit{b) Long-term Memory Structure}: The long-term memory preserves historical knowledge and patterns essential for sustained performance. It maintains comprehensive feature statistics $F_{stats}$ including temporal distributions and correlations, historical time step patterns $T_{step}$, and feature selection patterns $F_{patterns}$ across different operational periods. The long-term memory is formalized as:
+\begin{equation}
+    Mem_{long} = \{(F_{list}, T_{step}, F_{stats}, F_{patterns})\}
+\end{equation}
+
+\subsubsection{Memory Interaction Mechanism}
+The dual-memory system maintains bidirectional knowledge flow through two distinct interaction paths:
+
+\textit{a) Short-term to Long-term Transfer}: The system continuously evaluates and transfers valuable information from short-term to long-term memory:
+\begin{equation}
+    Mem_{long} = UpdatePatterns(Mem_{long}, Mem_{short})
+\end{equation}
+This process includes updating feature selection patterns based on successful predictions, refining model configuration strategies that yield high performance, and accumulating effective time window selections. The transfer mechanism employs significance filtering to ensure only valuable patterns are preserved:
+\begin{equation}
+    Significance = \mathcal{LLM}(P_{model}, F_{patterns}, T_{window})
+\end{equation}
+
+\textit{b) Long-term to Short-term Reference}: When making current decisions, the system retrieves relevant historical knowledge from long-term memory to guide short-term operations:
+\begin{equation}
+    Knowledge = RetrievePatterns(Mem_{long}, State_{current})
+\end{equation}
+This retrieved knowledge assists in feature selection, model configuration, and training strategy optimization. The LLM then combines this historical knowledge with current states for decision making:
+\begin{equation}
+    Decision = \mathcal{LLM}(State_{current}, Knowledge, Mem_{short})
+\end{equation}
+
+Through this bidirectional interaction mechanism, SALCA-IB achieves both knowledge preservation and efficient utilization. The short-term to long-term transfer ensures continuous learning and pattern accumulation, while the long-term to short-term reference enables experience-driven decision making without overwhelming the LLM's context capacity.
+
+\subsection{Continuous Learning and Optimization}
+Traditional static prediction models often fail to maintain performance as network conditions evolve. SALCA-IB addresses this challenge through a comprehensive continuous learning framework that combines online model updates with LLM-driven optimization strategies.
+
+\begin{algorithm}[t]
+    \caption{SALCA-IB}
+    \label{alg:salca-ib}
+    \begin{algorithmic}[1]
+    \Require
+        \Statex \hspace{-1em}Network data $\mathcal{D}$, Large language model $\mathcal{L}$
+        \Statex \hspace{-1em}Model pool $\mathcal{M} = \{FNN, LSTM, Transformer\}$
+        \Statex \hspace{-1em}Dual-memory system: $Mem_{short}$, $Mem_{long}$
+        \Statex \hspace{-1em}Parameters: $T_{max}$ (max iterations), $\delta$ (convergence threshold)
+    
+    \vspace{0.5em}
+    \State $D_{train} = \mathcal{LLM}_{select}(\mathcal{D}, Mem_{long})$ \Comment{Knowledge-driven selection}
+    
+    \State $(M_{set}, \theta, S) = \mathcal{LLM}_{config}(\mathcal{M}, Mem_{long})$ \Comment{Model configuration}
+    
+    \State $M_{ensemble} = TrainEnsemble(M_{set}, \theta, S, D_{train})$ \Comment{Initialize ensemble}
+    
+    \State $perf_{prev} = Evaluate(M_{ensemble}, D_{val})$ \Comment{Baseline evaluation}
+    
+    \State $t = 0$
+    
+    \While{$t < T_{max}$ \textbf{and} $\Delta_{perf} > \delta$}
+        \State $P_{failures} = Predict(M_{ensemble}, D_{new})$ \Comment{Failure prediction}
+        
+        \State $R_{failures} = CollectReal(D_{actual})$ \Comment{Ground truth}
+        
+        \State $E = Evaluate(P_{failures}, R_{failures})$ \Comment{Assessment}
+        
+        \State $F = \mathcal{LLM}_{feedback}(E, M_{ensemble}, \theta, S)$ \Comment{Generate feedback}
+        
+        \State $Mem_{short}.update(P_{failures}, R_{failures}, F)$ \Comment{Update short-term}
+        
+        \State $Mem_{long}.update(F, M_{ensemble}, \theta, S)$ \Comment{Update long-term}
+        
+        \State $(M_{set}, \theta, S, D_{train}) = \mathcal{LLM}_{optimize}(Mem_{short}, Mem_{long})$ \Comment{Optimize}
+        
+        \State $M_{ensemble}.update(M_{set}, \theta, S, D_{new})$ \Comment{Continuous learning}
+        
+        \State $perf_{current} = Evaluate(M_{ensemble}, D_{val})$     
+        \State $\Delta_{perf} = perf_{current} - perf_{prev}$
+        \State $perf_{prev} = perf_{current}$
+        \State $t = t + 1$
+    \EndWhile
+    
+    \State \Return $M_{ensemble}, \theta, S, Mem_{short}, Mem_{long}$ 
+    \end{algorithmic}
+    \end{algorithm}
+    
+
+\subsubsection{Continuous Assessment Process}
+The system performs continuous assessment of prediction performance through failure prediction ($P_{failures}$), reality collection ($R_{failures}$), and evaluation ($E$):
+\begin{equation}
+    E = Evaluate(P_{failures}, R_{failures})
+\end{equation}
+
+\subsubsection{LLM-Driven Feedback Generation}
+The feedback generation process forms the core of our self-refinement mechanism:
+
+\textit{a) Structured Feedback Generation}: The LLM analyzes performance metrics and generates specific, actionable feedback. This structured feedback encompasses architectural refinements for model components, feature importance adjustments, training strategy optimization, and ensemble weight recalibration. The generation process is formalized as:
+\begin{equation}
+    F = \mathcal{LLM}_{feedback}(E, M_{ensemble}, \theta, S)
+\end{equation}
+
+\textit{b) Memory Integration}: The system integrates feedback into its dual-memory architecture. Short-term memory captures recent feedback patterns and their immediate effects, while long-term memory preserves effective optimization strategies and their associated performance improvements:
+\begin{equation}
+    Mem_{short}.update(P_{failures}, R_{failures}, F)
+\end{equation}
+\begin{equation}
+    Mem_{long}.update(F, M_{ensemble}, \theta, S)
+\end{equation}
+
+\subsubsection{Feedback-Driven Model Update}
+The system implements feedback through a structured update process:
+
+\textit{a) Configuration Optimization}: The LLM leverages feedback and memory states to optimize model configurations, ensuring that updates align with both recent performance patterns and long-term optimization strategies:
+\begin{equation}
+    (M_{set}, \theta, S, D_{train}) = \mathcal{LLM}_{optimize}(Mem_{short}, Mem_{long})
+\end{equation}
+
+\textit{b) Model Update}: The ensemble model is updated based on the optimized configuration and new data:
+\begin{equation}
+    M_{ensemble} = UpdateEnsemble(M_{set}, \theta, S, D_{new})
+\end{equation}
+
+Through this feedback-centric learning framework, SALCA-IB achieves true self-refinement capability. The system not only adapts to changing conditions but also accumulates effective optimization strategies through LLM-generated feedback, enabling continuous performance improvement while maintaining operational stability.
+
+
+
+\section{Experimental Evaluation}
+
+\subsection{Experimental Setup}
+% - IB网络数据集描述（来源、规模、特征分布等）
+% - 评估指标定义（准确率、F1-score、预测延迟等）
+% - 基线方法介绍（传统ML方法、现有故障预测系统等）
+% - 实验环境配置（硬件、软件环境）
+% - SALCA-IB参数设置（记忆容量、更新阈值等）
+
+\subsection{Overall Performance Comparison}
+% - 与基线方法的全面对比
+% - 不同评估指标下的性能分析
+% - 在不同网络条件下的表现比较
+% - 统计显著性分析
+
+\subsection{Adaptability Analysis}
+% - 网络特征分布变化场景下的性能评估
+% - 模型适应速度分析
+% - 预测稳定性研究
+% - 与现有自适应方法的对比
+
+\subsection{Ablation Study}
+% - LLM规划核心的贡献分析
+% - 双重记忆系统的效果验证
+% - 在线学习机制的重要性
+% - 各个创新组件的独立贡献评估
+
+\subsection{Case Study}
+% - 典型故障预测案例分析
+% - LLM决策过程的可解释性展示
+% - 记忆系统工作机制的实例说明
+% - 系统适应过程的可视化
+
+\subsection{Efficiency and Overhead Analysis}
+% - 计算资源消耗评估
+% - 内存使用效率分析
+% - 预测延迟分析
+% - 系统扩展性研究
 
 \section{Ease of Use}
 
@@ -305,11 +560,6 @@ copy& More table copy$^{\mathrm{a}}$& &  \\
 \end{center}
 \end{table}
 
-\begin{figure}[htbp]
-\centerline{\includegraphics{fig1.png}}
-\caption{Example of a figure caption.}
-\label{fig}
-\end{figure}
 
 Figure Labels: Use 8 point Times New Roman for Figure labels. Use words 
 rather than symbols or abbreviations when writing Figure axis labels to 
