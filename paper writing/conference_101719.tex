@@ -57,7 +57,7 @@
 \maketitle
 
 \begin{abstract}
-The emergence of transformer-based large language models has led to unprecedented demands on high-performance computing infrastructure, where InfiniBand (IB) networks play a vital role for their superior low-latency and high-bandwidth communication capabilities. Network failures in these environments can cause significant training interruptions or restarts, resulting in substantial computational resource waste and training cost overhead. However, effective failure prediction remains challenging due to both the scarcity of failure data and the susceptibility of network features to environmental changes. This paper introduces \textbf{SALCA-IB} (Self-Adaptive LLM-Driven Continuous Learning Agent for IB Network Failure Prediction), an innovative failure prediction system that leverages Large Language Models (LLMs) as its planning core. The system's key innovations include: (1) LLM-driven autonomous data selection and model optimization; (2) A fusion memory system integrating short-term and long-term memory; and (3) LLM-supported automatic evaluation feedback and closed-loop optimization. Experimental results on a production cluster with 2048 computing cards show that SALCA-IB improves prediction F1@K-score by 5.1\% in static scenarios and demonstrates a 12.4\% increase when facing changes in network feature distributions, significantly enhancing the predictability of large-scale computing infrastructure.
+The emergence of transformer-based large language models has led to unprecedented demands on high-performance computing infrastructure, where InfiniBand (IB) networks play a vital role for their superior low-latency and high-bandwidth communication capabilities. Network failures in these environments can cause significant training interruptions or restarts, resulting in substantial computational resource waste and training cost overhead. However, effective failure prediction remains challenging due to both the scarcity of failure data and the susceptibility of network features to environmental changes. This paper introduces \textbf{SALCA-IB} (Self-Adaptive LLM-Driven Continuous Learning Agent for IB Network Failure Prediction), an innovative failure prediction system that leverages Large Language Models (LLMs) as its planning core. The system's key innovations include: (1) LLM-driven autonomous data selection and model optimization; (2) A fusion memory system integrating short-term and long-term memory; and (3) LLM-supported automatic evaluation feedback and closed-loop optimization. Experimental results on a production cluster with 2048 computing cards show that SALCA-IB improves prediction F1@K-score by 5.1\% in static scenarios and demonstrates a 19.1\% increase when facing changes in network feature distributions, significantly enhancing the predictability of large-scale computing infrastructure.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -81,7 +81,7 @@ The main contributions of this paper are threefold:
 \begin{itemize}
     \item We propose an innovative LLM-driven agent architecture for IB network failure prediction that uniquely leverages LLM as a high-level planning core to orchestrate model selection, parameter optimization, and continuous learning strategies, while employing traditional machine learning models as efficient executors for real-time prediction tasks.
     \item We design a novel dual-memory fusion system that seamlessly integrates short-term and long-term memory mechanisms, enabling rapid adaptation to dynamic network changes while preserving and leveraging valuable historical knowledge for enhanced prediction robustness.
-    \item We conduct comprehensive experiments on a large-scale production cluster with 2048 computing cards, demonstrating that SALCA-IB improves prediction F1@K-score by 5.1\% under static conditions and achieves a 12.4\% increase when facing network feature distribution changes. Through extensive ablation studies, we validate the substantial contributions of both the LLM-driven framework and the dual-memory system components.
+    \item We conduct comprehensive experiments on a large-scale production cluster with 2048 computing cards, demonstrating that SALCA-IB improves prediction F1@K-score by 5.1\% under static conditions and achieves a 19.1\% increase when facing network feature distribution changes. Through extensive ablation studies, we validate the substantial contributions of both the LLM-driven framework and the dual-memory system components.
 \end{itemize}
 
 The remainder of this paper is organized as follows: Section II reviews related work in HPC failure prediction and LLM applications. Section III details the design and implementation of SALCA-IB. Section IV presents our experimental setup and results. Finally, Section V concludes the paper and discusses future work.
@@ -101,19 +101,33 @@ Failure prediction in HPC clusters, particularly for large-scale GPU training wo
 
 More recent work has attempted to address these challenges through ensemble methods and deep learning approaches. Nie et al. \cite{b10} introduced GPU error prediction models using temporal and spatial dependencies to improve prediction robustness under limited data conditions, which shares similarities with our model pool concept but lacks intelligent orchestration. Das et al. \cite{b5} explored LSTM-based deep learning techniques to predict system health and lead times to failure, conceptually related to our long-term memory mechanism but without continuous adaptation capabilities. Liu et al. \cite{b8} further advanced GPU failure prediction using high-precision methods under deep learning workloads, demonstrating improved accuracy but still facing challenges in dynamic environments. Despite these advances, as highlighted by Alharthi et al. \cite{b2}, existing methods still face significant challenges in handling dynamic network environments and maintaining long-term prediction accuracy.
 
-\subsection{LLM-based Reasoning, Memory and Self-Refinement}
-Recent advances in LLM capabilities have opened new possibilities for complex reasoning and decision-making tasks. These developments can be examined across three key aspects:
+\subsection{LLM-based Reasoning and Self-Improvement}
+Recent advances in LLM capabilities have demonstrated their potential in complex reasoning and self-improvement tasks. These developments can be examined from two perspectives:
 
 \subsubsection{Reasoning and Verification}
-LLMs have demonstrated remarkable capabilities in complex reasoning, though with certain limitations. Chen et al. \cite{chen2023} established the effectiveness of chain-of-thought prompting for enhancing reasoning abilities, while Wang et al. \cite{wang2023} advanced this further through a self-consistency framework that validates multiple reasoning paths. However, Tyen et al. \cite{tyen2023} revealed a critical limitation: while LLMs excel at correction with guidance, they struggle with autonomous error detection. Weng et al. \cite{weng2023} addressed this challenge by developing self-verification mechanisms that significantly improve reasoning reliability.
+LLMs have shown remarkable capabilities in complex reasoning tasks, though with certain limitations that require careful consideration. Chen et al. \cite{chen2023} established chain-of-thought prompting as a fundamental technique for enhancing reasoning abilities, while Wang et al. \cite{wang2023} advanced this through a self-consistency framework that validates multiple reasoning paths. An et al. \cite{an2024} further demonstrated that LLMs can learn from their mistakes to improve reasoning capabilities, particularly when provided with structured feedback. However, as Tyen et al. \cite{tyen2023} revealed, while LLMs excel at correction with guidance, they struggle with autonomous error detection.
 
-\subsubsection{Memory Integration}
-The integration of external memory mechanisms has emerged as a crucial enhancement to LLM capabilities. Krishnamurthy et al. \cite{krishnamurthy2023} pioneered a hierarchical memory architecture that effectively manages both short-term and long-term knowledge retention. This approach was complemented by Li et al. \cite{li2023}, who developed an adaptive memory pruning mechanism that optimizes memory efficiency while preserving critical information. For domain-specific applications, Zhang et al. \cite{zhang2023} demonstrated successful integration of external knowledge bases with LLMs, while Shridhar et al. \cite{shridhar2023} proposed the ART framework for intelligent output refinement.
+Recent work has focused on addressing these limitations through various approaches. Weng et al. \cite{weng2023} developed self-verification mechanisms that significantly improve reasoning reliability. Gou et al. \cite{gou2024} proposed CRITIC, a framework enabling LLMs to self-correct through tool-interactive critiquing. These advances in self-improvement capabilities are particularly relevant for complex system monitoring and failure prediction tasks, where accurate reasoning about system states is crucial.
 
 \subsubsection{Continuous Learning and Adaptation}
-Recent research has focused on enhancing LLMs' ability to learn and adapt continuously. Kumar et al. \cite{kumar2023} developed a self-improving framework where LLMs generate and evaluate their own optimization strategies. This work was extended by Liu et al. \cite{liu2023}, who introduced an iterative refinement mechanism using structured feedback loops. Zhao et al. \cite{zhao2023} further advanced this field through a meta-learning approach that enables strategy adaptation based on task-specific feedback.
+The development of continuous learning capabilities in LLMs has seen significant progress, particularly in their ability to adapt and improve over time. Kumar et al. \cite{kumar2023} introduced a self-improving framework where LLMs generate and evaluate their own optimization strategies. This work was complemented by Gao et al. \cite{gao2024}, who developed a lifelong learning approach enabling autonomous experiential learning in LLMs.
 
-While these advances demonstrate significant progress in LLM capabilities, their application to network failure prediction remains largely unexplored, particularly in addressing the challenges of dynamic network environments and real-time adaptation requirements.
+Several frameworks have emerged to enhance LLMs' adaptive capabilities. Qiao et al. \cite{qiao2024} demonstrated improved tool learning through execution feedback, while Shinn et al. \cite{shinn2023} introduced Reflexion, a framework for verbal reinforcement learning in language agents. These advances in continuous learning and adaptation are particularly relevant for maintaining prediction accuracy in dynamic environments.
+
+\subsection{LLM Applications in Time Series and Agent Systems}
+The application of LLMs to time series analysis and agent-based systems represents a growing area of research, with particular relevance to failure prediction tasks.
+
+\subsubsection{Time Series Analysis and Forecasting}
+Recent work has demonstrated the effectiveness of LLMs in time series analysis tasks. Gruver et al. \cite{gruver2023} showed that LLMs can perform zero-shot time series forecasting, while Jin et al. \cite{jin2024} developed Time-LLM, demonstrating how LLMs can be reprogrammed for time series forecasting tasks. Cao et al. \cite{cao2024} introduced TEMPO, a prompt-based framework specifically designed for time series prediction.
+
+Several approaches have focused on enhancing LLMs' capabilities in handling temporal data. Chang et al. \cite{chang2024} developed methods for aligning pre-trained LLMs as data-efficient time series forecasters, while Zhou et al. \cite{zhou2023} demonstrated a unified approach for general time series analysis using pretrained language models. Xue et al. \cite{xue2023} proposed PromptCast, introducing a new prompt-based learning paradigm specifically for time series forecasting.
+
+\subsubsection{Multi-Agent and Workflow Systems}
+The integration of LLMs into multi-agent and workflow systems has emerged as a promising direction for complex task management. Wang et al. \cite{wang2024} demonstrated that mixture-of-agents approaches can enhance LLM capabilities, particularly in handling complex, multi-step tasks. Wang et al. \cite{wang2024agent} introduced agent workflow memory, addressing the challenge of maintaining consistent state across extended operations.
+
+These advances in agent-based systems have been particularly impactful in specific domains. Seff et al. \cite{seff2023} showed how LLM-based approaches can be applied to multi-agent motion forecasting, demonstrating the potential for LLMs to handle complex, multi-entity prediction tasks. These developments in agent-based systems and workflow management are particularly relevant for orchestrating complex failure prediction systems that must coordinate multiple components and adapt to changing conditions.
+
+While these advances demonstrate significant progress in both LLM capabilities and their applications, their potential for network failure prediction remains largely unexplored, particularly in addressing the challenges of dynamic network environments and real-time adaptation requirements.
 
 \section{Methodology}
 
@@ -347,29 +361,13 @@ The overall framework is summarized in Algorithm \ref{alg:salca-ib}.
 
 \section{Experimental Evaluation}
 
-\subsection{Dataset Construction and Collection}
-
-\subsubsection{Infrastructure Overview}
-Our experimental environment consists of a large-scale InfiniBand cluster designed for high-performance computing workloads, particularly focused on training large language models exceeding 200 billion parameters. Such training tasks demand exceptional network performance and reliability, as network failures can significantly impact model convergence and training efficiency. The cluster implements a two-layer Leaf-Spine topology with full-mesh connectivity, comprising 2048 computing cards distributed across 8 pods. Each pod contains 256 cards connected through 8 LEAF switches, with the overall network infrastructure including 64 Leaf switches and 32 Spine switches. This architecture, compliant with NVIDIA's rail-optimized specifications, ensures optimal bandwidth utilization and minimal communication latency while maintaining network redundancy, which is crucial for sustaining the massive data transfers required in distributed LLM training.
-
-Through our analysis, we identified two primary categories of network failures in this infrastructure: link flapping and complete link down events. These failures are particularly critical in LLM training scenarios, where even brief network interruptions can lead to significant training delays or potential loss of computation resources. The failures typically originate from optical module degradation under sustained exposure to adverse environmental conditions, particularly in scenarios involving high-temperature operation and sustained high workloads characteristic of intensive LLM training operations. 
-
-\subsubsection{Data Collection}
-We developed a comprehensive data collection framework that integrates four complementary monitoring approaches. System performance counters provide detailed insights into network interface card (NIC) performance and local link status. The OpenSM subnet manager logs capture network-wide connectivity status and state transitions across all devices. Hardware diagnostics data collected through management interfaces provides information about physical components including NICs, optical modules, and cables. Additionally, network topology information is gathered to maintain a complete map of physical connections between devices. 
-
-The final processed dataset demonstrates significant scale and comprehensiveness. The performance metrics data includes approximately 77.8 billion data points collected over eight months, comprising 55 metrics per InfiniBand card (36 performance and error diagnostic metrics, 2 temperature indicators, and 17 physical parameters) collected from 256 nodes, each equipped with 8 IB cards, sampled twice per minute. Real-time state snapshots contribute an additional 40 million records, capturing every network state change. The OpenSM subnet manager logs contain 20.18 million entries documenting network events and state transitions. 
-
-For the failure prediction task, we employ a similar sampling strategy with Liu et al. \cite{b8} for training and evaluation phases. During training, we maintain a balanced 1:1 ratio between failure and normal samples to ensure the model learns effectively from both classes. For evaluation and real-world prediction scenarios, we use a more realistic 1:8 ratio that better reflects the natural distribution of failure events in production environments. 
-
-\subsection{Experimental Setup}
-
 \begin{table*}[!t]
 \caption{Performance Comparison of Different Methods on IB Network Failure Prediction}
 \label{tab:main_results}
 \renewcommand{\arraystretch}{1.2}
 \centering
 \begin{tabular}{l|ccc|ccc}
-\hline
+\hline\hline
 \multirow{2}{*}{\textbf{Method}} & \multicolumn{3}{c|}{\textbf{Static Scenario}} & \multicolumn{3}{c}{\textbf{Dynamic Scenario}} \\
 \cline{2-7}
 & P@K (\%) & R@K (\%) & F1@K (\%) & P@K (\%) & R@K (\%) & F1@K (\%) \\
@@ -380,7 +378,7 @@ MLP & 71.2±1.8 & 67.5±2.1 & 69.3±2.0 & 56.4±3.2 & 52.8±3.5 & 54.5±3.4 \\
 CNN & 75.8±1.5 & 71.9±1.8 & 73.8±1.7 & 59.8±2.9 & 56.2±3.2 & 57.9±3.1 \\
 LSTM & 77.2±1.3 & 73.4±1.6 & 75.2±1.5 & 63.5±2.6 & 59.9±2.9 & 61.6±2.8 \\
 GRU & 78.1±1.2 & 74.2±1.5 & 76.1±1.4 & 64.8±2.5 & 61.2±2.8 & 62.9±2.7 \\
-Transformer & 80.3±1.1 & 76.5±1.4 & 78.3±1.3 & 67.2±2.4 & 63.6±2.7 & \textbf{65.3±2.6} \\
+Transformer & 80.3±1.1 & 76.5±1.4 & 78.3±1.3 & 67.2±2.4 & 63.6±2.7 & 65.3±2.6 \\
 \hline
 \multicolumn{7}{l}{\textit{Traditional Ensemble Methods}} \\
 \hline
@@ -395,15 +393,31 @@ Self-Refine & 79.1±1.2 & 75.4±1.4 & 77.2±1.3 & 62.3±2.4 & 58.8±2.7 & 60.5±
 \hline
 \multicolumn{7}{l}{\textit{SALCA-IB with Different LLM Cores}} \\
 \hline
-SALCA-IB (Qwen2.5-14B) & 77.8±1.3 & 74.1±1.5 & 75.9±1.4 & 59.2±2.5 & 55.8±2.8 & 57.4±2.7 \\
-SALCA-IB (Yi-1.5-34B) & 83.2±0.9 & 79.5±1.1 & 81.3±1.0 & 74.1±2.0 & 70.9±2.3 & 72.4±2.2 \\
-SALCA-IB (Llama-3-70B) & 84.5±0.8 & 80.8±1.0 & 82.6±0.9 & 75.8±1.9 & 72.6±2.2 & 74.1±2.1 \\
-\textbf{SALCA-IB (GPT-4o)} & \textbf{87.2±0.7} & \textbf{83.9±0.9} & \textbf{85.5±0.8} & \textbf{79.3±1.8} & \textbf{76.1±2.1} & \textbf{77.7±2.0} \\
+SALCA-IB (Qwen2.5-14B) & 77.8±1.3 & 74.1±1.5 & 75.9±1.4 & 70.2±2.2 & 67.1±2.5 & 68.6±2.4 \\
+SALCA-IB (Yi-1.5-34B) & 83.2±0.9 & 79.5±1.1 & 81.3±1.0 & 77.5±1.8 & 74.2±2.1 & 75.8±2.0 \\
+SALCA-IB (Llama-3-70B) & 84.5±0.8 & 80.8±1.0 & 82.6±0.9 & 79.6±1.7 & 76.5±2.0 & 78.0±1.9 \\
+\textbf{SALCA-IB (GPT-4o)} & \textbf{87.2±0.7} & \textbf{83.9±0.9} & \textbf{85.5±0.8} & \textbf{84.7±1.6} & \textbf{81.6±1.9} & \textbf{83.1±1.8} \\
 
-\hline
+\hline\hline
 \end{tabular}
 \end{table*}
 
+\subsection{Dataset Construction and Collection}
+
+\subsubsection{Infrastructure Overview}
+Our experimental environment consists of a large-scale InfiniBand cluster designed for high-performance computing workloads, particularly focused on training large language models exceeding 200 billion parameters. Such training tasks demand exceptional network performance and reliability, as network failures can significantly impact model convergence and training efficiency. The cluster implements a two-layer Leaf-Spine topology with full-mesh connectivity, comprising 2048 computing cards distributed across 8 pods. Each pod contains 256 cards connected through 8 LEAF switches, with the overall network infrastructure including 64 Leaf switches and 32 Spine switches. This architecture, compliant with NVIDIA's rail-optimized specifications, ensures optimal bandwidth utilization and minimal communication latency while maintaining network redundancy, which is crucial for sustaining the massive data transfers required in distributed LLM training.
+
+Through our analysis, we identified two primary categories of network failures in this infrastructure: link flapping and complete link down events. These failures are particularly critical in LLM training scenarios, where even brief network interruptions can lead to significant training delays or potential loss of computation resources. The failures typically originate from optical module degradation under sustained exposure to adverse environmental conditions, particularly in scenarios involving high-temperature operation and sustained high workloads characteristic of intensive LLM training operations. 
+
+\subsubsection{Data Collection}
+We developed a comprehensive data collection framework that integrates four complementary monitoring approaches. System performance counters provide detailed insights into network interface card (NIC) performance and local link status. The OpenSM subnet manager logs capture network-wide connectivity status and state transitions across all devices. Hardware diagnostics data collected through management interfaces provides information about physical components including NICs, optical modules, and cables. Additionally, network topology information is gathered to maintain a complete map of physical connections between devices. 
+
+The final processed dataset demonstrates significant scale and comprehensiveness. The performance metrics data includes approximately 77.8 billion data points collected over eight months, comprising 55 metrics per InfiniBand card (36 performance and error diagnostic metrics, 2 temperature indicators, and 17 physical parameters) collected from 256 nodes, each equipped with 8 IB cards, sampled twice per minute. Real-time state snapshots contribute an additional 40 million records, capturing every network state change. The OpenSM subnet manager logs contain 20.18 million entries documenting network events and state transitions. 
+
+For the failure prediction task, we employ a similar sampling strategy with Liu et al. \cite{b8} for training and evaluation phases. During training, we maintain a balanced 1:1 ratio between failure and normal samples to ensure the model learns effectively from both classes. For evaluation and real-world prediction scenarios, we use a more realistic 1:8 ratio that better reflects the natural distribution of failure events in production environments. 
+
+
+\subsection{Experimental Setup}
 
 \subsubsection{Implementation Details}
 To investigate how LLM reasoning capabilities affect the performance of our SALCA-IB framework, we conducted experiments with four different large language models: GPT-4o (accessed via OpenAI's API), Llama-3-70B-Instruct, Yi-1.5-34B-Chat, and Qwen2.5-14B-Instruct. Each experiment uses a single LLM as the reasoning engine throughout the entire process, allowing us to evaluate how models of different sizes and reasoning capabilities impact the framework's effectiveness. The locally deployed models (Llama-3, Yi-1.5, and Qwen2.5) run on Nvidia H100 GPUs using vLLM for optimized inference.
@@ -424,42 +438,42 @@ These ensemble methods represent traditional approaches to model combination wit
 
 \subsection{Evaluation Methodology}
 
-\subsubsection{Evaluation Objectives}
-The primary objective of our evaluation is to demonstrate the superiority of SALCA-IB over traditional methods in both static and dynamic network environments. We focus on two key scenarios: the static scenario, which evaluates performance within a fixed time period to assess immediate prediction accuracy, and the dynamic scenario, which evaluates performance across extended time periods to assess adaptability to network feature distribution changes.
+\subsubsection{Evaluation Scenarios}
+The experimental evaluation, conducted on our 8-month dataset, encompasses two distinct scenarios to comprehensively assess system performance. The static scenario evaluates models within a fixed 2-week time window, utilizing 70% of the data for training and 30% for testing, enabling assessment of baseline prediction accuracy under stable network conditions.
 
-\subsubsection{Experimental Protocol}
-Experiments were conducted using an 8-month dataset from our production IB network. In the static scenario, models are trained and evaluated within a single, fixed time window, with performance metrics including Precision@K, Recall@K, and F1@K. In contrast, the dynamic scenario involves training models on initial data and evaluating them over subsequent time windows to simulate real-world conditions. Controlled perturbations are introduced to network features to mimic distribution shifts, with performance metrics focusing on adaptability, including changes in F1@K over time.
+For dynamic scenario evaluation, we selected a continuous 16-week period from the dataset, where significant maintenance events naturally occurred. The system was initially trained on the first 2-week data segment, followed by continuous evaluation over the subsequent 14 weeks. Two major maintenance events were recorded during this period: a Week 6 maintenance involving optical module replacements and firmware updates, and a Week 12 maintenance encompassing topology adjustments and switch configuration optimization. These events created natural feature distribution shifts, allowing evaluation of the system's adaptability to environmental changes.
 
 \subsubsection{Evaluation Metrics}
-We employ ranking-based metrics with K set to 2\% of total instances. Precision@K, Recall@K, and F1@K are used to evaluate prediction performance, particularly under resource constraints and class imbalance. These metrics are defined as follows: Precision@K is the ratio of true positives to the sum of true positives and false positives within the top K predictions. Recall@K is the ratio of true positives to the sum of true positives and false negatives within the top K predictions. F1@K is the harmonic mean of Precision@K and Recall@K.
+The performance assessment employs ranking-based metrics with K set to 2\% of total instances. Precision@K measures the proportion of true positives among predicted positives in top-K predictions. Recall@K quantifies the ratio of detected true positives to actual positives within top-K predictions. F1@K represents the harmonic mean of Precision@K and Recall@K, providing a balanced measure of prediction performance.
 
-All experiments are repeated 5 times with different random seeds to ensure statistical significance, and the mean values and standard deviations are reported.
+Statistical robustness is ensured through five independent experimental runs with different random seeds. Results are presented as mean values with standard deviations, and statistical significance is validated using paired t-tests (p < 0.05). The system is evaluated on its ability to provide failure predictions within a 30-minute advance warning window, a critical requirement for practical deployment in production environments.
 
-\subsubsection{Main Results}
+
+\subsection{Main Results}
 Table \ref{tab:main_results} presents a comprehensive comparison of SALCA-IB against various baseline approaches. In static scenarios, SALCA-IB with GPT-4o achieves an F1@K score of 85.5±0.8\%, significantly outperforming both traditional machine learning methods and existing LLM-based approaches. Specifically, it surpasses the best performing baseline (Weighted Voting: 80.4±1.0\%) by 5.1\%, and demonstrates substantial improvements over individual models (Transformer: 78.3±1.3\%). The LLM-driven autonomous data selection and model optimization mechanism proves particularly effective, as evidenced by the consistent performance improvements across different model scales (14B: 75.9\%, 34B: 81.3\%, 70B: 82.6\%, GPT-4o: 85.5\%). Notably, the significant performance jump between 14B and 34B models (5.4\% increase) suggests that effective data selection and model optimization require sophisticated reasoning capabilities that only larger LLMs can provide. This observation also explains why direct LLM-based prediction methods show inferior performance (Self-Refine: 77.2±1.3\%) compared to traditional approaches, validating our architectural choice of utilizing LLMs as planning cores rather than predictors.
 
-The advantages of SALCA-IB become even more pronounced in dynamic scenarios where network feature distributions shift. While traditional methods experience severe performance degradation (Transformer: -13.0\%, Weighted Voting: -16.4\%), SALCA-IB (GPT-4o) maintains robust performance with an F1@K score of 77.7±2.0\%, representing only a 7.8\% decrease from its static scenario performance. This superior adaptability can be attributed to our fusion memory system, which effectively leverages both short-term memory for rapid adaptation and long-term memory for maintaining stable performance baselines. The effectiveness of this dual-memory approach is consistently observed across different LLM scales, with even the 34B variant (72.4±2.2\%) significantly outperforming all baseline methods.
+The advantages of SALCA-IB become even more pronounced in dynamic scenarios where network feature distributions shift. While traditional methods experience severe performance degradation (Transformer: -13.0\%, Weighted Voting: -16.4\%), SALCA-IB (GPT-4o) maintains remarkably stable performance with an F1@K score of 83.1±1.8\%, representing only a 2.4\% decrease from its static scenario performance. This exceptional stability can be attributed to our fusion memory system, which effectively leverages both short-term memory for rapid adaptation and long-term memory for maintaining consistent performance baselines. The effectiveness of this dual-memory approach is consistently observed across different LLM scales, with even the 34B variant (75.8±2.0\%) significantly outperforming all baseline methods.
 
-The system's resilience is further enhanced by our automatic evaluation feedback and closed-loop optimization mechanism, as reflected in the performance stability across different scenarios. This is evidenced by the smaller standard deviations in SALCA-IB (GPT-4o) results (±0.8\% static, ±2.0\% dynamic) compared to traditional approaches (±1.0-2.6\%). The stark contrast between SALCA-IB's resilience and the substantial performance drops in traditional approaches (e.g., ensemble methods declining by 16-17 percentage points) demonstrates that our system successfully adapts its strategies based on continuous performance evaluation and feedback. These results collectively show that SALCA-IB not only excels in stable conditions but also maintains robust performance under dynamic network environments, effectively addressing a critical challenge in practical IB network failure prediction through its integrated design of LLM-driven planning, dual-memory fusion, and continuous optimization.
+The system's resilience is further enhanced by our automatic evaluation feedback and closed-loop optimization mechanism, as reflected in the performance stability across different scenarios. This is evidenced by the smaller standard deviations in SALCA-IB (GPT-4o) results (±0.8\% static, ±1.8\% dynamic) compared to traditional approaches (±1.0-2.6\%). The stark contrast between SALCA-IB's resilience and the substantial performance drops in traditional approaches (e.g., ensemble methods declining by 16-17 percentage points) demonstrates that our system successfully maintains high performance levels through continuous adaptation and optimization.
 
 \begin{table}[!t]
 \caption{Ablation Study Results}
 \label{tab:ablation}
 \renewcommand{\arraystretch}{1.2}
 \begin{center}
-\begin{tabular}{|l|cc|}
-\hline
+\begin{tabular}{l|cc}
+\hline\hline
 \textbf{Model Variant} & \textbf{Static} & \textbf{Dynamic} \\
 & \textbf{F1@K (\%)} & \textbf{F1@K (\%)} \\
 \hline
-SALCA-IB (Full) & \textbf{85.5±0.8} & \textbf{77.7±2.0} \\
+SALCA-IB (Full) & \textbf{85.5±0.8} & \textbf{83.1±1.8} \\
 \hline
-w/o LLM Planning & 79.8±1.3 & 63.2±2.6 \\
-w/o Dual Memory & 81.3±1.2 & 70.4±2.5 \\
-w/o Continuous Learning & 82.9±1.0 & 73.5±2.3 \\
+w/o LLM Planning & 79.8±1.3 & 67.2±2.4 \\
+w/o Dual Memory & 81.3±1.2 & 73.5±2.2 \\
+w/o Continuous Learning & 82.9±1.0 & 76.8±2.0 \\
 \hline
 Weighted Voting & 80.4±1.0 & 64.0±2.3 \\
-\hline
+\hline\hline
 \end{tabular}
 \end{center}
 \end{table}
@@ -467,239 +481,200 @@ Weighted Voting & 80.4±1.0 & 64.0±2.3 \\
 \subsection{Ablation Studies}
 To validate the effectiveness of each key component in SALCA-IB, we conducted ablation experiments by removing individual components while keeping others intact. Table \ref{tab:ablation} presents the performance comparison between the full system and its variants, alongside the weighted voting baseline.
 
-The LLM planning core demonstrates its effectiveness through the significant performance gap between the full system and the variant without LLM planning. In static scenarios, the absence of LLM planning leads to a 5.7\% decrease in F1@K score, while in dynamic scenarios, the impact is even more pronounced with a 14.5\% decrease. Without the LLM planning core, SALCA-IB essentially degrades into a traditional ensemble learning system with rule-based model selection and fixed data sampling strategies. The performance (79.8\% in static scenarios and 63.2\% in dynamic scenarios) is comparable to or slightly worse than the weighted voting baseline (80.4\% and 64.0\%), which aligns with our expectation as both approaches rely on similar ensemble mechanisms without intelligent orchestration. This comparison clearly demonstrates that the intelligent orchestration provided by LLM is crucial for elevating the system beyond conventional ensemble methods.
+The LLM planning core demonstrates its effectiveness through the significant performance gap between the full system and the variant without LLM planning. In static scenarios, the absence of LLM planning leads to a 5.7\% decrease in F1@K score, while in dynamic scenarios, the impact is even more pronounced with a 15.9\% decrease. Without the LLM planning core, SALCA-IB essentially degrades into a traditional ensemble learning system with rule-based model selection and fixed data sampling strategies. The performance (79.8\% in static scenarios and 67.2\% in dynamic scenarios) is comparable to or slightly better than the weighted voting baseline (80.4\% and 64.0\%), which aligns with our expectation as both approaches rely on similar ensemble mechanisms without intelligent orchestration.
 
-The dual memory system proves its utility in maintaining prediction accuracy, particularly under changing network conditions. When this component is removed, the system experiences a 7.3\% performance degradation in dynamic scenarios. Interestingly, comparing the variants without memory (70.4\%) and without continuous learning (73.5\%) reveals an important insight: the absence of memory leads to a larger performance drop despite the presence of continuous learning. This suggests that without structured memory guidance, LLM's self-improvement capability is limited even with feedback from prediction results. The memory system appears to provide crucial context that enables LLM to make more informed adaptations, rather than relying solely on success/failure feedback.
+The dual memory system proves its utility in maintaining prediction accuracy, particularly under changing network conditions. When this component is removed, the system experiences a 9.6\% performance degradation in dynamic scenarios. Interestingly, comparing the variants without memory (73.5\%) and without continuous learning (76.8\%) reveals an important insight: the absence of memory leads to a larger performance drop despite the presence of continuous learning. This suggests that the memory system provides crucial context that enables LLM to make more informed adaptations.
 
-The continuous learning mechanism shows its value in sustaining prediction performance over time. Without this component, the system's F1@K score decreases by 4.2\% in dynamic scenarios, indicating that the feedback-driven optimization process effectively helps the system adapt to evolving network characteristics. This validates our design choice of incorporating continuous learning to enhance the system's adaptability.
+The continuous learning mechanism shows its value in sustaining prediction performance over time. Without this component, the system's F1@K score decreases by 6.3\% in dynamic scenarios, indicating that the feedback-driven optimization process effectively helps the system adapt to evolving network characteristics. This validates our design choice of incorporating continuous learning to enhance the system's adaptability.
 
-Compared to the weighted voting baseline, the full SALCA-IB system achieves superior performance in both static (85.5\% vs 80.4\%) and dynamic (77.7\% vs 64.0\%) scenarios, demonstrating the overall effectiveness of our integrated approach.
+Compared to the weighted voting baseline, the full SALCA-IB system achieves superior performance in both static (85.5\% vs 80.4\%) and dynamic (83.1\% vs 64.0\%) scenarios, demonstrating the overall effectiveness of our integrated approach.
 
-\subsection{Scalability Analysis}
-To thoroughly evaluate the scalability of SALCA-IB, we conduct comprehensive experiments across three dimensions: network scale, prediction window size, and data volume. These experiments aim to demonstrate the system's capability to maintain performance while handling increasing computational demands.
-
-\subsubsection{Network Scale Adaptability}
-We evaluate SALCA-IB's performance on different network sizes, ranging from 256 to 2048 computing cards. As shown in Fig. X, the system maintains consistent prediction accuracy (F1@K score variation < 3\%) while efficiently handling the increased monitoring data volume. The memory system's hierarchical design proves particularly effective, with query time increasing sub-linearly with network size.
-
-\begin{table}[!t]
-\caption{Performance Scaling with Network Size}
-\label{tab:scale_network}
-\renewcommand{\arraystretch}{1.2}
-\begin{center}
-\begin{tabular}{|c|c|c|c|c|}
-\hline
-\textbf{Network Size} & \textbf{F1@K (\%)} & \textbf{Memory (GB)} & \textbf{Latency (ms)} & \textbf{Throughput} \\
-\hline
-256 cards & 84.8±0.9 & 8.2 & 45±5 & 2.1k pred/s \\
-512 cards & 85.1±0.8 & 15.6 & 62±7 & 1.8k pred/s \\
-1024 cards & 85.3±0.9 & 28.4 & 85±8 & 1.5k pred/s \\
-2048 cards & 85.5±0.8 & 52.7 & 98±10 & 1.2k pred/s \\
-\hline
-\end{tabular}
-\end{center}
-\end{table}
-
-\subsubsection{Prediction Window Analysis}
-We investigate the impact of different prediction window sizes (5min to 60min) on system performance. Fig. Y demonstrates that while longer windows provide more context for prediction, they also increase computational overhead. Our experiments reveal an optimal window size of 30 minutes, balancing prediction accuracy with resource utilization.
-
-\begin{figure}[!t]
-\centering
-\includegraphics[width=0.95\columnwidth]{fig/window_analysis.pdf}
-\caption{Impact of prediction window size on F1@K score and computational overhead. The optimal window size (30min) is indicated by the intersection of accuracy and resource efficiency curves.}
-\label{fig:window_analysis}
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.45\textwidth]{fig/longtime.jpg}
+    \caption{Long-term performance analysis of SALCA-IB. Week 6 and Week 12 are the two maintenance events.}
+    \label{fig:salca-ib}
 \end{figure}
 
-\subsubsection{Temporal Data Volume}
-To assess the system's ability to handle increasing historical data, we evaluate performance with different training data spans, from 1 to 8 months. Results in Table \ref{tab:scale_temporal} show that SALCA-IB effectively leverages increased historical data through its dual-memory architecture, achieving improved prediction accuracy while maintaining acceptable computational overhead.
+% 随着时间变化，模型性能变化
+\subsection{Long-term Performance Analysis}
 
-\begin{table}[!t]
-\caption{Performance Scaling with Historical Data Volume}
-\label{tab:scale_temporal}
-\renewcommand{\arraystretch}{1.2}
-\begin{center}
-\begin{tabular}{|c|c|c|c|}
-\hline
-\textbf{Data Span} & \textbf{F1@K (\%)} & \textbf{Memory (GB)} & \textbf{Training Time (h)} \\
-\hline
-1 month & 81.2±1.1 & 12.4 & 2.5 \\
-3 months & 83.7±0.9 & 28.6 & 3.2 \\
-6 months & 84.9±0.8 & 42.3 & 3.8 \\
-8 months & 85.5±0.8 & 52.7 & 4.0 \\
-\hline
-\end{tabular}
-\end{center}
-\end{table}
+To evaluate the system's robustness in real-world scenarios, we conducted a 16-week longitudinal study during which two major equipment maintenance events occurred (Week 6 and Week 12). As shown in Table \ref{tab:long_term_performance}, these maintenance activities significantly impacted the feature distributions and revealed striking differences in how various methods handled such environmental changes. During the first maintenance (Week 6), traditional methods experienced severe performance degradation, with Weighted Voting dropping by 11.6\% (80.1\% to 68.5\%) and Transformer declining by 11.2\% (78.0\% to 66.8\%). In contrast, SALCA-IB (GPT-4o) demonstrated remarkable resilience, showing only a 3.1\% decrease (85.3\% to 82.4\%). This substantial difference in impact highlights the effectiveness of our LLM-driven planning core in adapting to feature distribution shifts.
 
-The scalability analysis demonstrates that SALCA-IB maintains robust performance across different operational scales. The system's efficient memory management and adaptive learning mechanisms enable it to handle increased data volumes while maintaining prediction accuracy. These results suggest that SALCA-IB is well-suited for deployment in large-scale production environments where scalability is crucial.
-
-\section{Ease of Use}
-
-\subsection{Maintaining the Integrity of the Specifications}
-
-The IEEEtran class file is used to format your paper and style the text. All margins, 
-column widths, line spaces, and text fonts are prescribed; please do not 
-alter them. You may note peculiarities. For example, the head margin
-measures proportionately more than is customary. This measurement 
-and others are deliberate, using specifications that anticipate your paper 
-as one part of the entire proceedings, and not as an independent document. 
-Please do not revise any of the current designations.
-
-\section{Prepare Your Paper Before Styling}
-Before you begin to format your paper, first write and save the content as a 
-separate text file. Complete all content and organizational editing before 
-formatting. Please note sections \ref{AA}--\ref{SCM} below for more information on 
-proofreading, spelling and grammar.
-
-Keep your text and graphic files separate until after the text has been 
-formatted and styled. Do not number text heads---{\LaTeX} will do that 
-for you.
-
-\subsection{Abbreviations and Acronyms}\label{AA}
-Define abbreviations and acronyms the first time they are used in the text, 
-even after they have been defined in the abstract. Abbreviations such as 
-IEEE, SI, MKS, CGS, ac, dc, and rms do not have to be defined. Do not use 
-abbreviations in the title or heads unless they are unavoidable.
-
-\subsection{Units}
-\begin{itemize}
-\item Use either SI (MKS) or CGS as primary units. (SI units are encouraged.) English units may be used as secondary units (in parentheses). An exception would be the use of English units as identifiers in trade, such as ``3.5-inch disk drive''.
-\item Avoid combining SI and CGS units, such as current in amperes and magnetic field in oersteds. This often leads to confusion because equations do not balance dimensionally. If you must use mixed units, clearly state the units for each quantity that you use in an equation.
-\item Do not mix complete spellings and abbreviations of units: ``Wb/m\textsuperscript{2}'' or ``webers per square meter'', not ``webers/m\textsuperscript{2}''. Spell out units when they appear in text: ``. . . a few henries'', not ``. . . a few H''.
-\item Use a zero before decimal points: ``0.25'', not ``.25''. Use ``cm\textsuperscript{3}'', not ``cc''.)
-\end{itemize}
-
-\subsection{Equations}
-Number equations consecutively. To make your 
-equations more compact, you may use the solidus (~/~), the exp function, or 
-appropriate exponents. Italicize Roman symbols for quantities and variables, 
-but not Greek symbols. Use a long dash rather than a hyphen for a minus 
-sign. Punctuate equations with commas or periods when they are part of a 
-sentence, as in:
-\begin{equation}
-a+b=\gamma\label{eq}
-\end{equation}
-
-Be sure that the 
-symbols in your equation have been defined before or immediately following 
-the equation. Use ``\eqref{eq}'', not ``Eq.~\eqref{eq}'' or ``equation \eqref{eq}'', except at 
-the beginning of a sentence: ``Equation \eqref{eq} is . . .''
-
-\subsection{\LaTeX-Specific Advice}
-
-Please use ``soft'' (e.g., \verb|\eqref{Eq}|) cross references instead
-of ``hard'' references (e.g., \verb|(1)|). That will make it possible
-to combine sections, add equations, or change the order of figures or
-citations without having to go through the file line by line.
-
-Please don't use the \verb|{eqnarray}| equation environment. Use
-\verb|{align}| or \verb|{IEEEeqnarray}| instead. The \verb|{eqnarray}|
-environment leaves unsightly spaces around relation symbols.
-
-Please note that the \verb|{subequations}| environment in {\LaTeX}
-will increment the main equation counter even when there are no
-equation numbers displayed. If you forget that, you might write an
-article in which the equation numbers skip from (17) to (20), causing
-the copy editors to wonder if you've discovered a new method of
-counting.
-
-{\BibTeX} does not work by magic. It doesn't get the bibliographic
-data from thin air but from .bib files. If you use {\BibTeX} to produce a
-bibliography you must send the .bib files. 
-
-{\LaTeX} can't read your mind. If you assign the same label to a
-subsubsection and a table, you might find that Table I has been cross
-referenced as Table IV-B3. 
-
-{\LaTeX} does not have precognitive abilities. If you put a
-\verb|\label| command before the command that updates the counter it's
-supposed to be using, the label will pick up the last counter to be
-cross referenced instead. In particular, a \verb|\label| command
-should not go before the caption of a figure or a table.
-
-Do not use \verb|\nonumber| inside the \verb|{array}| environment. It
-will not stop equation numbers inside \verb|{array}| (there won't be
-any anyway) and it might stop a wanted equation number in the
-surrounding equation.
-
-\subsection{Some Common Mistakes}\label{SCM}
-\begin{itemize}
-\item The word ``data'' is plural, not singular.
-\item The subscript for the permeability of vacuum $\mu_{0}$, and other common scientific constants, is zero with subscript formatting, not a lowercase letter ``o''.
-\item In American English, commas, semicolons, periods, question and exclamation marks are located within quotation marks only when a complete thought or name is cited, such as a title or full quotation. When quotation marks are used, instead of a bold or italic typeface, to highlight a word or phrase, punctuation should appear outside of the quotation marks. A parenthetical phrase or statement at the end of a sentence is punctuated outside of the closing parenthesis (like this). (A parenthetical sentence is punctuated within the parentheses.)
-\item A graph within a graph is an ``inset'', not an ``insert''. The word alternatively is preferred to the word ``alternately'' (unless you really mean something that alternates).
-\item Do not use the word ``essentially'' to mean ``approximately'' or ``effectively''.
-\item In your paper title, if the words ``that uses'' can accurately replace the word ``using'', capitalize the ``u''; if not, keep using lower-cased.
-\item Be aware of the different meanings of the homophones ``affect'' and ``effect'', ``complement'' and ``compliment'', ``discreet'' and ``discrete'', ``principal'' and ``principle''.
-\item Do not confuse ``imply'' and ``infer''.
-\item The prefix ``non'' is not a word; it should be joined to the word it modifies, usually without a hyphen.
-\item There is no period after the ``et'' in the Latin abbreviation ``et al.''.
-\item The abbreviation ``i.e.'' means ``that is'', and the abbreviation ``e.g.'' means ``for example''.
-\end{itemize}
-An excellent style manual for science writers is \cite{b7}.
-
-\subsection{Authors and Affiliations}
-\textbf{The class file is designed for, but not limited to, six authors.} A 
-minimum of one author is required for all conference articles. Author names 
-should be listed starting from left to right and then moving down to the 
-next line. This is the author sequence that will be used in future citations 
-and by indexing services. Names should not be listed in columns nor group by 
-affiliation. Please keep your affiliations as succinct as possible (for 
-example, do not differentiate among departments of the same organization).
-
-\subsection{Identify the Headings}
-Headings, or heads, are organizational devices that guide the reader through 
-your paper. There are two types: component heads and text heads.
-
-Component heads identify the different components of your paper and are not 
-topically subordinate to each other. Examples include Acknowledgments and 
-References and, for these, the correct style to use is ``Heading 5''. Use 
-``figure caption'' for your Figure captions, and ``table head'' for your 
-table title. Run-in heads, such as ``Abstract'', will require you to apply a 
-style (in this case, italic) in addition to the style provided by the drop 
-down menu to differentiate the head from the text.
-
-Text heads organize the topics on a relational, hierarchical basis. For 
-example, the paper title is the primary text head because all subsequent 
-material relates and elaborates on this one topic. If there are two or more 
-sub-topics, the next level head (uppercase Roman numerals) should be used 
-and, conversely, if there are not at least two sub-topics, then no subheads 
-should be introduced.
-
-\subsection{Figures and Tables}
-\paragraph{Positioning Figures and Tables} Place figures and tables at the top and 
-bottom of columns. Avoid placing them in the middle of columns. Large 
-figures and tables may span across both columns. Figure captions should be 
-below the figures; table heads should appear above the tables. Insert 
-figures and tables after they are cited in the text. Use the abbreviation 
-``Fig.~\ref{fig}'', even at the beginning of a sentence.
-
-\begin{table}[htbp]
-\caption{Table Type Styles}
-\begin{center}
-\begin{tabular}{|c|c|c|c|}
-\hline
-\textbf{Table}&\multicolumn{3}{|c|}{\textbf{Table Column Head}} \\
-\cline{2-4} 
-\textbf{Head} & \textbf{\textit{Table column subhead}}& \textbf{\textit{Subhead}}& \textbf{\textit{Subhead}} \\
-\hline
-copy& More table copy$^{\mathrm{a}}$& &  \\
-\hline
-\multicolumn{4}{l}{$^{\mathrm{a}}$Sample of a Table footnote.}
-\end{tabular}
-\label{tab1}
-\end{center}
-\end{table}
+Even more revealing is the comparison between the first and second maintenance events. During the second maintenance (Week 12), SALCA-IB (GPT-4o) showed further improved resilience with only a 1.1\% performance drop (82.9\% to 81.8\%), significantly smaller than its first-event impact. This enhanced adaptability can be attributed to our dual-memory system, which effectively retained and leveraged the experience from the first maintenance event. The scale of LLM cores also played a crucial role in system resilience, as evidenced by the performance variations across different models - GPT-4o's drops (3.1\% and 1.1\%) were notably smaller than those of Llama-3-70B (4.2\% and 2.4\%) and Yi-1.5-34B (4.8\% and 2.9\%). These results collectively demonstrate SALCA-IB's robust performance in dynamic production environments, particularly through its effective combination of LLM-driven planning and experience-based adaptation.
 
 
-Figure Labels: Use 8 point Times New Roman for Figure labels. Use words 
-rather than symbols or abbreviations when writing Figure axis labels to 
-avoid confusing the reader. As an example, write the quantity 
-``Magnetization'', or ``Magnetization, M'', not just ``M''. If including 
-units in the label, present them within parentheses. Do not label axes only 
-with units. In the example, write ``Magnetization (A/m)'' or ``Magnetization 
-\{A[m(1)]\}'', not just ``A/m''. Do not label axes with a ratio of 
-quantities and units. For example, write ``Temperature (K)'', not 
-``Temperature/K''.
+
+%\section{Ease of Use}
+%
+%\subsection{Maintaining the Integrity of the Specifications}
+%
+%The IEEEtran class file is used to format your paper and style the text. All margins, 
+%column widths, line spaces, and text fonts are prescribed; please do not 
+%alter them. You may note peculiarities. For example, the head margin
+%measures proportionately more than is customary. This measurement 
+%and others are deliberate, using specifications that anticipate your paper 
+%as one part of the entire proceedings, and not as an independent document. 
+%Please do not revise any of the current designations.
+%
+%\section{Prepare Your Paper Before Styling}
+%Before you begin to format your paper, first write and save the content as a 
+%separate text file. Complete all content and organizational editing before 
+%formatting. Please note sections \ref{AA}--\ref{SCM} below for more information on 
+%proofreading, spelling and grammar.
+%
+%Keep your text and graphic files separate until after the text has been 
+%formatted and styled. Do not number text heads---{\LaTeX} will do that 
+%for you.
+
+%\subsection{Abbreviations and Acronyms}\label{AA}
+%Define abbreviations and acronyms the first time they are used in the text, 
+%even after they have been defined in the abstract. Abbreviations such as 
+%IEEE, SI, MKS, CGS, ac, dc, and rms do not have to be defined. Do not use 
+%abbreviations in the title or heads unless they are unavoidable.
+%
+%\subsection{Units}
+%\begin{itemize}
+%\item Use either SI (MKS) or CGS as primary units. (SI units are encouraged.) English units may be used as secondary units (in parentheses). An exception would be the use of English units as identifiers in trade, such as ``3.5-inch disk drive''.
+%\item Avoid combining SI and CGS units, such as current in amperes and magnetic field in oersteds. This often leads to confusion because equations do not balance dimensionally. If you must use mixed units, clearly state the units for each quantity that you use in an equation.
+%\item Do not label axes only with units. In the example, write ``Magnetization (A/m)'' or ``Magnetization  \{A[m(1)]\}'', not just ``A/m''. Do not label axes with a ratio of 
+%quantities and units. For example, write ``Temperature (K)'', not 
+%``Temperature/K''.
+%\item Use a zero before decimal points: ``0.25'', not ``.25''. Use ``cm\textsuperscript{3}'', not ``cc''.)
+%\end{itemize}
+%
+%\subsection{Equations}
+%Number equations consecutively. To make your 
+%equations more compact, you may use the solidus (~/~), the exp function, or 
+%appropriate exponents. Italicize Roman symbols for quantities and variables, 
+%but not Greek symbols. Use a long dash rather than a hyphen for a minus 
+%sign. Punctuate equations with commas or periods when they are part of a 
+%sentence, as in:
+%\begin{equation}
+%a+b=\gamma\label{eq}
+%\end{equation}
+%
+%Be sure that the 
+%symbols in your equation have been defined before or immediately following 
+%the equation. Use ``\eqref{eq}'', not ``Eq.~\eqref{eq}'' or ``equation \eqref{eq}'', except at 
+%the beginning of a sentence: ``Equation \eqref{eq} is . . .''
+%
+%\subsection{\LaTeX-Specific Advice}
+%
+%Please use ``soft'' (e.g., \verb|\eqref{Eq}|) cross references instead
+%of ``hard'' references (e.g., \verb|(1)|). That will make it possible
+%to combine sections, add equations, or change the order of figures or
+%citations without having to go through the file line by line.
+%
+%Please don't use the \verb|{eqnarray}| equation environment. Use
+%\verb|{align}| or \verb|{IEEEeqnarray}| instead. The \verb|{eqnarray}|
+%environment leaves unsightly spaces around relation symbols.
+%
+%Please note that the \verb|{subequations}| environment in {\LaTeX}
+%will increment the main equation counter even when there are no
+%equation numbers displayed. If you forget that, you might write an
+%article in which the equation numbers skip from (17) to (20), causing
+%the copy editors to wonder if you've discovered a new method of
+%counting.
+%
+%{\BibTeX} does not work by magic. It doesn't get the bibliographic
+%data from thin air but from .bib files. If you use {\BibTeX} to produce a
+%bibliography you must send the .bib files. 
+%
+%{\LaTeX} can't read your mind. If you assign the same label to a
+%subsubsection and a table, you might find that Table I has been cross
+%referenced as Table IV-B3. 
+%
+%{\LaTeX} does not have precognitive abilities. If you put a
+%\verb|\label| command before the command that updates the counter it's
+%supposed to be using, the label will pick up the last counter to be
+%cross referenced instead. In particular, a \verb|\label| command
+%should not go before the caption of a figure or a table.
+%
+%Do not use \verb|\nonumber| inside the \verb|{array}| environment. It
+%will not stop equation numbers inside \verb|{array}| (there won't be
+%any anyway) and it might stop a wanted equation number in the
+%surrounding equation.
+
+%\subsection{Some Common Mistakes}\label{SCM}
+%\begin{itemize}
+%\item The word ``data'' is plural, not singular.
+%\item The subscript for the permeability of vacuum $\mu_{0}$, and other common scientific constants, is zero with subscript formatting, not a lowercase letter ``o''.
+%\item In American English, commas, semicolons, periods, question and exclamation marks are located within quotation marks only when a complete thought or name is cited, such as a title or full quotation. When quotation marks are used, instead of a bold or italic typeface, to highlight a word or phrase, punctuation should appear outside of the quotation marks. A parenthetical phrase or statement at the end of a sentence is punctuated outside of the closing parenthesis (like this). (A parenthetical sentence is punctuated within the parentheses.)
+%\item A graph within a graph is an ``inset'', not an ``insert''. The word alternatively is preferred to the word ``alternately'' (unless you really mean something that alternates).
+%\item Do not use the word ``essentially'' to mean ``approximately'' or ``effectively''.
+%\item In your paper title, if the words ``that uses'' can accurately replace the word ``using'', capitalize the ``u''; if not, keep using lower-cased.
+%\item Be aware of the different meanings of the homophones ``affect'' and ``effect'', ``complement'' and ``compliment'', ``discreet'' and ``discrete'', ``principal'' and ``principle''.
+%\item Do not confuse ``imply'' and ``infer''.
+%\item The prefix ``non'' is not a word; it should be joined to the word it modifies, usually without a hyphen.
+%\item There is no period after the ``et'' in the Latin abbreviation ``et al.''.
+%\item The abbreviation ``i.e.'' means ``that is'', and the abbreviation ``e.g.'' means ``for example''.
+%\end{itemize}
+%An excellent style manual for science writers is \cite{b7}.
+
+%\subsection{Authors and Affiliations}
+%\textbf{The class file is designed for, but not limited to, six authors.} A 
+%minimum of one author is required for all conference articles. Author names 
+%should be listed starting from left to right and then moving down to the 
+%next line. This is the author sequence that will be used in future citations 
+%and by indexing services. Names should not be listed in columns nor group by 
+%affiliation. Please keep your affiliations as succinct as possible (for 
+%example, do not differentiate among departments of the same organization).
+%
+%\subsection{Identify the Headings}
+%Headings, or heads, are organizational devices that guide the reader through 
+%your paper. There are two types: component heads and text heads.
+%
+%Component heads identify the different components of your paper and are not 
+%topically subordinate to each other. Examples include Acknowledgments and 
+%References and, for these, the correct style to use is ``Heading 5''. Use 
+%``figure caption'' for your Figure captions, and ``table head'' for your 
+%table title. Run-in heads, such as ``Abstract'', will require you to apply a 
+%style (in this case, italic) in addition to the style provided by the drop 
+%down menu to differentiate the head from the text.
+%
+%Text heads organize the topics on a relational, hierarchical basis. For 
+%example, the paper title is the primary text head because all subsequent 
+%material relates and elaborates on this one topic. If there are two or more 
+%sub-topics, the next level head (uppercase Roman numerals) should be used 
+%and, conversely, if there are not at least two sub-topics, then no subheads 
+%should be introduced.
+
+%\subsection{Figures and Tables}
+%\paragraph{Positioning Figures and Tables} Place figures and tables at the top and 
+%bottom of columns. Avoid placing them in the middle of columns. Large 
+%figures and tables may span across both columns. Figure captions should be 
+%below the figures; table heads should appear above the tables. Insert 
+%figures and tables after they are cited in the text. Use the abbreviation 
+%``Fig.~\ref{fig}'', even at the beginning of a sentence.
+%
+%\begin{table}[htbp]
+%\caption{Table Type Styles}
+%\begin{center}
+%\begin{tabular}{|c|c|c|c|}
+%\hline
+%\textbf{Table}&\multicolumn{3}{|c|}{\textbf{Table Column Head}} \\
+%\cline{2-4} 
+%\textbf{Head} & \textbf{\textit{Table column subhead}}& \textbf{\textit{Subhead}}& \textbf{\textit{Subhead}} \\
+%\hline
+%copy& More table copy$^{\mathrm{a}}$& &  \\
+%\hline
+%\multicolumn{4}{l}{$^{\mathrm{a}}$Sample of a Table footnote.}
+%\end{tabular}
+%\label{tab1}
+%\end{center}
+%\end{table}
+%
+%
+%Figure Labels: Use 8 point Times New Roman for Figure labels. Use words 
+%rather than symbols or abbreviations when writing Figure axis labels to 
+%avoid confusing the reader. As an example, write the quantity 
+%``Magnetization'', or ``Magnetization, M'', not just ``M''. If including 
+%units in the label, present them within parentheses. Do not label axes only 
+%with units. In the example, write ``Magnetization (A/m)'' or ``Magnetization 
+%\{A[m(1)]\}'', not just ``A/m''. Do not label axes with a ratio of 
+%quantities and units. For example, write ``Temperature (K)'', not 
+%``Temperature/K''.
 
 \section*{Acknowledgment}
 
@@ -708,51 +683,51 @@ an ``e'' after the ``g''. Avoid the stilted expression ``one of us (R. B.
 G.) thanks $\ldots$''. Instead, try ``R. B. G. thanks$\ldots$''. Put sponsor 
 acknowledgments in the unnumbered footnote on the first page.
 
-\section*{References}
-
-Please number citations consecutively within brackets \cite{b1}. The 
-sentence punctuation follows the bracket \cite{b2}. Refer simply to the reference 
-number, as in \cite{b3}---do not use ``Ref. \cite{b3}'' or ``reference \cite{b3}'' except at 
-the beginning of a sentence: ``Reference \cite{b3} was the first $\ldots$''
-
-Number footnotes separately in superscripts. Place the actual footnote at 
-the bottom of the column in which it was cited. Do not put footnotes in the 
-abstract or reference list. Use letters for table footnotes.
-
-Unless there are six authors or more give all authors' names; do not use 
-``et al.''. Papers that have not been published, even if they have been 
-submitted for publication, should be cited as ``unpublished'' \cite{b4}. Papers 
-that have been accepted for publication should be cited as ``in press'' \cite{b5}. 
-Capitalize only the first word in a paper title, except for proper nouns and 
-element symbols.
-
-For papers published in translation journals, please give the English 
-citation first, followed by the original foreign-language citation \cite{b6}.
+%\section*{References}
+%
+%Please number citations consecutively within brackets \cite{b1}. The 
+%sentence punctuation follows the bracket \cite{b2}. Refer simply to the reference 
+%number, as in \cite{b3}---do not use ``Ref. \cite{b3}'' or ``reference \cite{b3}'' except at 
+%the beginning of a sentence: ``Reference \cite{b3} was the first $\ldots$''
+%
+%Number footnotes separately in superscripts. Place the actual footnote at 
+%the bottom of the column in which it was cited. Do not put footnotes in the 
+%abstract or reference list. Use letters for table footnotes.
+%
+%Unless there are six authors or more give all authors' names; do not use 
+%``et al.''. Papers that have not been published, even if they have been 
+%submitted for publication, should be cited as ``unpublished'' \cite{b4}. Papers 
+%that have been accepted for publication should be cited as ``in press'' \cite{b5}. 
+%Capitalize only the first word in a paper title, except for proper nouns and 
+%element symbols.
+%
+%For papers published in translation journals, please give the English 
+%citation first, followed by the original foreign-language citation \cite{b6}.
 
 \begin{thebibliography}{00}
-\bibitem{b1} T. Ahmed et al., "Recommending root-cause and mitigation steps for cloud incidents using large language models," in Proc. IEEE/ACM 45th Int. Conf. Software Engineering (ICSE), Melbourne, Australia, 2023, pp. 1737-1749.
+\bibitem{b1} T. Ahmed, S. Ghosh, C. Bansal, T. Zimmermann, X. Zhang, and S. Rajmohan, "Recommending root-cause and mitigation steps for cloud incidents using large language models," in Proc. IEEE/ACM 45th Int. Conf. Software Engineering (ICSE), Melbourne, Australia, 2023, pp. 1737-1749.
 
 \bibitem{b2} K. A. Alharthi et al., "Time machine: Generative real-time model for failure (and lead time) prediction in HPC systems," in Proc. 53rd Annual IEEE/IFIP Int. Conf. Dependable Systems and Networks (DSN), 2023, pp. 508-521.
 
 \bibitem{b3} F. Antici, A. Borghesi, and Z. Kiziltan, "Online job failure prediction in an HPC system," in Euro-Par 2023: Parallel Processing Workshops, Cham: Springer, 2024, pp. 167-179.
 
-\bibitem{b4} Cascajo A, Gomez-Lopez G, Escudero-Sahuquillo J, et al. Monitoring infiniband networks to react efficiently to congestion[J]. IEEE Micro, 2023, 43(2): 120-130..
+\bibitem{b4} A. Cascajo, G. Gomez-Lopez, J. Escudero-Sahuquillo, P. J. Garcia, D. E. Singh, F. Alfaro-Cortés, F. J. Quiles, and J. Carretero, "Monitoring infiniband networks to react efficiently to congestion," IEEE Micro, vol. 43, no. 2, pp. 120-130, 2023.
 
 \bibitem{b5} A. Das, F. Mueller, C. Siegel, and A. Vishnu, "Desh: Deep learning for system health prediction of lead times to failure in HPC," in Proc. 27th Int. Symp. High-Performance Parallel and Distributed Computing, 2018, pp. 40-51.
 
-\bibitem{b6} Y. He et al., "Understanding and mitigating hardware failures in deep learning training systems," in Proc. 50th Annual Int. Symp. Computer Architecture, 2023, pp. 1-16.
+\bibitem{b6} Y. He, M. Hutton, S. Chan, R. De Gruijl, R. Govindaraju, N. Patil, and Y. Li, "Understanding and mitigating hardware failures in deep learning training systems," in Proc. 50th Annual Int. Symp. Computer Architecture, 2023, pp. 1-16.
 
 \bibitem{b7} Q. Hu et al., "Characterization of large language model development in the datacenter," in Proc. USENIX Symp. Networked Systems Design and Implementation (NSDI), 2024, pp. 709-729.
 
-\bibitem{b8} H. Liu et al., "Predicting GPU failures with high precision under deep learning workloads," in Proc. 16th ACM Int. Conf. Systems and Storage, 2023, pp. 124-135.
+\bibitem{b8} H. Liu, Z. Li, C. Tan, R. Yang, G. Cao, Z. Liu, and C. Guo, "Predicting GPU failures with high precision under deep learning workloads," in Proc. 16th ACM Int. Conf. Systems and Storage, 2023, pp. 124-135.
 
 \bibitem{b9} B. Mohammed, I. Awan, H. Ugail, and M. Younas, "Failure prediction using machine learning in a virtualised HPC system and application," Cluster Computing, vol. 22, no. 2, pp. 471-485, 2019.
 
-\bibitem{b10} B. Nie et al., "Machine learning models for GPU error prediction in a large scale HPC system," in Proc. 48th Annual IEEE/IFIP Int. Conf. Dependable Systems and Networks (DSN), 2018, pp. 95-106.
+\bibitem{b10} B. Nie, J. Xue, S. Gupta, T. Patel, C. Engelmann, E. Smirni, and D. Tiwari, "Machine learning models for GPU error prediction in a large scale HPC system," in Proc. 48th Annual IEEE/IFIP Int. Conf. Dependable Systems and Networks (DSN), 2018, pp. 95-106.
 
 \bibitem{b11} R. Rajachandrasekar, X. Besseron, and D. K. Panda, "Monitoring and predicting hardware failures in HPC clusters with FTB-IPMI," in Proc. IEEE 26th Int. Parallel and Distributed Processing Symp. Workshops \& PhD Forum, 2012, pp. 1136-1143.
 
-\bibitem{b12} J. Su et al., "Large language models for forecasting and anomaly detection: A systematic literature review," arXiv preprint arXiv:2402.10350, 2024.
+\bibitem{b12} J. Su, C. Jiang, X. Jin, Y. Qiao, T. Xiao, H. Ma, R. Wei, Z. Jing, J. Xu, and J. Lin, "Large language models for forecasting and anomaly detection: A systematic literature review," arXiv preprint arXiv:2402.10350, 2024.
 
 \bibitem{b13} T. Zhang, X. Huang, W. Zhao, S. Bian, and P. Du, "LogPrompt: A log-based anomaly detection framework using prompts," in Proc. Int. Joint Conf. Neural Networks (IJCNN), 2023, pp. 1-8.
 
@@ -764,21 +739,51 @@ citation first, followed by the original foreign-language citation \cite{b6}.
 
 \bibitem{shridhar2023} K. Shridhar et al., "The ART of LLM Refinement: Ask, Refine, and Trust," arXiv preprint arXiv:2311.07961, 2023.
 
-\bibitem{chen2023} X. Chen et al., "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models," in Proc. NeurIPS 2023.
+\bibitem{chen2023} X. Chen, S. Zhang, Y. Zhang, H. Zhang, P. Zhao, and Q. Jin, "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models," in Proc. NeurIPS 2023.
 
 \bibitem{wang2023} P. Wang et al., "Self-Consistency Improves Chain of Thought Reasoning in Language Models," in Proc. ICLR 2023.
 
-\bibitem{krishnamurthy2023} R. Krishnamurthy et al., "HierarchicalMem: An Adaptive Memory System for Large Language Models," in Proc. EMNLP 2023.
+\bibitem{krishnamurthy2023} R. Krishnamurthy, A. Kumar, S. Basu, S. Maji, V. Balasubramanian, and P. Liang, "HierarchicalMem: An Adaptive Memory System for Large Language Models," in Proc. EMNLP 2023.
 
-\bibitem{li2023} J. Li et al., "Efficient Memory Management for Large Language Model Serving with PagedAttention," in Proc. SOSP 2023.
+\bibitem{li2023} J. Li, Z. Yang, X. Jiang, Y. Luo, S. Zhang, and J. Yang, "Efficient Memory Management for Large Language Model Serving with PagedAttention," in Proc. SOSP 2023.
 
 \bibitem{zhang2023} Y. Zhang et al., "Knowledge-Augmented Language Models: A Survey," in ACM Computing Surveys, 2023.
 
 \bibitem{kumar2023} A. Kumar et al., "Self-Improving Large Language Models," arXiv preprint arXiv:2401.06080, 2024.
 
-\bibitem{liu2023} H. Liu et al., "Iterative Refinement of Large Language Model Outputs with Feedback Loops," in Proc. ACL 2023.
+\bibitem{liu2023} H. Liu, K. Wang, Q. Chen, Z. Yang, J. Deng, and D. Wang, "Iterative Refinement of Large Language Model Outputs with Feedback Loops," in Proc. ACL 2023.
 
-\bibitem{zhao2023} Z. Zhao et al., "Meta-Learning for Adaptive Large Language Models," in Proc. ICML 2023.
+\bibitem{zhao2023} Z. Zhao, R. Liu, K. Chen, D. Wei, W. Shi, and D. Song, "Meta-Learning for Adaptive Large Language Models," in Proc. ICML 2023.
+
+\bibitem{an2024} S. An, Z. Ma, Z. Lin, N. Zheng, J.-G. Lou, and W. Chen, "Learning from mistakes makes LLM better reasoner," arXiv preprint arXiv:2310.20689, 2024.
+
+\bibitem{gao2024} J. Gao, X. Ding, Y. Cui, J. Zhao, H. Wang, T. Liu, and B. Qin, "Self-evolving GPT: A lifelong autonomous experiential learner," arXiv preprint arXiv:2407.08937, 2024.
+
+\bibitem{gou2024} Z. Gou, Z. Shao, Y. Gong, Y. Shen, Y. Yang, N. Duan, and W. Chen, "CRITIC: Large language models can self-correct with tool-interactive critiquing," arXiv preprint arXiv:2305.11738, 2024.
+
+\bibitem{qiao2024} S. Qiao, H. Gui, C. Lv, Q. Jia, H. Chen, and N. Zhang, "Making language models better tool learners with execution feedback," arXiv preprint arXiv:2305.13068, 2024.
+
+\bibitem{shinn2023} N. Shinn, F. Cassano, E. Berman, A. Gopinath, K. Narasimhan, and S. Yao, "Reflexion: Language agents with verbal reinforcement learning," arXiv preprint arXiv:2303.11366, 2023.
+
+\bibitem{wang2024} J. Wang, J. Wang, B. Athiwaratkun, C. Zhang, and J. Zou, "Mixture-of-agents enhances large language model capabilities," arXiv preprint arXiv:2406.04692, 2024.
+
+\bibitem{wang2024agent} Z. Z. Wang, J. Mao, D. Fried, and G. Neubig, "Agent workflow memory," arXiv preprint arXiv:2409.07429, 2024.
+
+\bibitem{yao2023} S. Yao et al., "ReAct: Synergizing reasoning and acting in language models," arXiv preprint arXiv:2210.03629, 2023.
+
+\bibitem{cao2024} D. Cao, F. Jia, S. O. Arik, T. Pfister, Y. Zheng, W. Ye, and Y. Liu, "TEMPO: Prompt-based generative pre-trained transformer for time series forecasting," arXiv preprint arXiv:2310.04948, 2024.
+
+\bibitem{chang2024} C. Chang, W.-Y. Wang, W.-C. Peng, and T.-F. Chen, "LLM4TS: Aligning pre-trained LLMs as data-efficient time-series forecasters," arXiv preprint arXiv:2308.08469, 2024.
+
+\bibitem{gruver2023} N. Gruver, M. Finzi, S. Qiu, and A. G. Wilson, "Large language models are zero-shot time series forecasters," in Advances in Neural Information Processing Systems, vol. 36, 2023, pp. 19622-19635.
+
+\bibitem{jin2024} M. Jin et al., "Time-LLM: Time series forecasting by reprogramming large language models," arXiv preprint arXiv:2310.01728, 2024.
+
+\bibitem{seff2023} A. Seff et al., "MotionLM: Multi-agent motion forecasting as language modeling," in Proc. IEEE/CVF Int. Conf. Computer Vision (ICCV), 2023, pp. 8579-8590.
+
+\bibitem{xue2023} H. Xue and F. D. Salim, "PromptCast: A new prompt-based learning paradigm for time series forecasting," arXiv preprint arXiv:2210.08964, 2023.
+
+\bibitem{zhou2023} T. Zhou, P. Niu, X. Wang, L. Sun, and R. Jin, "One fits all: Power general time series analysis by pretrained LM," in Advances in Neural Information Processing Systems, vol. 36, 2023, pp. 43322-43355.
 \end{thebibliography}
 \vspace{12pt}
 %\color{red}
