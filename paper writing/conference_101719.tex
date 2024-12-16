@@ -9,6 +9,7 @@
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{multirow}
+\usepackage{makecell}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \begin{document}
@@ -57,7 +58,7 @@
 \maketitle
 
 \begin{abstract}
-The emergence of transformer-based large language models has led to unprecedented demands on high-performance computing infrastructure, where InfiniBand (IB) networks play a vital role for their superior low-latency and high-bandwidth communication capabilities. Network failures in these environments can cause significant training interruptions or restarts, resulting in substantial computational resource waste and training cost overhead. However, effective failure prediction remains challenging due to both the scarcity of failure data and the susceptibility of network features to environmental changes. This paper introduces \textbf{SALCA-IB} (Self-Adaptive LLM-Driven Continuous Learning Agent for IB Network Failure Prediction), an innovative failure prediction system that leverages Large Language Models (LLMs) as its planning core. The system's key innovations include: (1) LLM-driven autonomous data selection and model optimization; (2) A fusion memory system integrating short-term and long-term memory; and (3) LLM-supported automatic evaluation feedback and closed-loop optimization. Experimental results on a production cluster with 2048 computing cards show that SALCA-IB improves prediction F1@K-score by 5.1\% in static scenarios and demonstrates a 19.1\% increase when facing changes in network feature distributions, significantly enhancing the predictability of large-scale computing infrastructure.
+The proliferation of transformer-based large language models has intensified demands on high-performance computing infrastructure, where InfiniBand (IB) networks are crucial for their superior low-latency and high-bandwidth communication capabilities. Network failures in these environments can trigger significant training interruptions or necessitate complete restarts, leading to substantial computational resource waste and training cost overhead. However, effective failure prediction faces dual challenges: the scarcity of failure data and the vulnerability of network features to environmental variations. This paper introduces \textbf{SALCA-IB} (Self-Adaptive LLM-Driven Continuous Learning Agent for IB Network Failure Prediction), an innovative system that leverages Large Language Models (LLMs) as its planning core. The system's key innovations comprise: (1) LLM-driven autonomous data selection and model optimization; (2) A dual-memory fusion system integrating short-term and long-term memory mechanisms; and (3) LLM-supported automatic evaluation feedback with closed-loop optimization. Experimental results on a production cluster with 2,048 computing cards demonstrate that SALCA-IB enhances prediction F1@K-score by 5.1\% in static scenarios and achieves a 19.1\% improvement when confronting network feature distribution shifts, substantially advancing the predictability of large-scale computing infrastructure.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -65,26 +66,26 @@ The emergence of transformer-based large language models has led to unprecedente
 \end{IEEEkeywords}
 
 \section{Introduction}
-The rapid advancement of transformer-based language models has fundamentally transformed the landscape of artificial intelligence, leading to unprecedented demands on computing infrastructure. Training these increasingly large models, often comprising hundreds of billions of parameters, requires massive distributed computing resources with high-performance interconnects. In such environments, InfiniBand (IB) networks have become the de facto standard for their exceptional performance in low-latency, high-bandwidth communication, serving as the critical backbone for distributed training tasks.
+The unprecedented evolution of transformer-based language models has revolutionized the artificial intelligence landscape, imposing extraordinary demands on computing infrastructure. Training these increasingly sophisticated models, which frequently encompass hundreds of billions of parameters, necessitates extensive distributed computing resources equipped with high-performance interconnects. Within this computational ecosystem, InfiniBand (IB) networks have emerged as the de facto standard, distinguished by their superior low-latency and high-bandwidth communication capabilities, thereby forming the essential backbone for distributed training operations.
 
-Network failures in distributed training environments can have severe consequences. When IB network failures occur during model training, they often cause unexpected training interruptions or complete restarts, leading to significant computational resource waste and increased operational costs. For instance, recent studies have shown that network-related failures can account for up to 30\% of training interruptions in large-scale AI clusters, with each incident potentially wasting hundreds of GPU hours (He et al. \cite{b6}). This challenge becomes particularly acute as models grow larger and training runs extend to weeks or even months.
+Network failures in distributed training environments can have severe consequences. When IB network failures occur during model training, they often trigger unexpected training interruptions or necessitate complete restarts, leading to significant computational resource waste and increased operational costs. For instance, recent studies have shown that network-related failures can account for up to 30\% of training interruptions in large-scale AI clusters, with each incident potentially wasting hundreds of GPU hours (He et al. \cite{b6}). This challenge becomes particularly acute as models grow larger and training runs extend to weeks or even months.
 
-Despite its critical importance, effective IB network failure prediction faces several significant challenges. First, failure data in production environments is inherently scarce, as failures are relatively rare events in well-maintained systems, making it difficult to build robust prediction models using traditional machine learning approaches. Second, network feature distributions are highly dynamic and susceptible to various external factors (Liu et al. \cite{b8}), such as environmental conditions, hardware aging, and maintenance activities. These challenges are further compounded by the increasing scale and complexity of modern computing infrastructures.
+Despite its paramount importance, effective IB network failure prediction confronts multiple fundamental challenges. Primarily, failure data in production environments exhibits inherent scarcity, as failure events remain relatively rare in well-maintained systems, thereby impeding the development of robust prediction models through conventional machine learning approaches. Furthermore, network feature distributions demonstrate high dynamicity and vulnerability to diverse external factors (Liu et al. \cite{b8}), including environmental conditions, hardware degradation, and maintenance interventions. These challenges are intensified by the escalating scale and architectural complexity of modern computing infrastructures.
 
-Traditional approaches to network failure prediction primarily rely on static machine learning models or rule-based systems (Mohammed et al. \cite{b9}, Nie et al. \cite{b10}). While these methods have shown some success in controlled environments, they struggle to maintain performance in real-world scenarios where network characteristics evolve continuously. Moreover, existing solutions often operate as black boxes, providing limited interpretability and failing to leverage historical experience effectively for continuous improvement (Das et al. \cite{b5}). Recent advances in deep learning-based approaches have attempted to address these limitations, but they still face challenges in adapting to dynamic environments and maintaining long-term prediction accuracy (Alharthi et al. \cite{b2}).
+Traditional approaches to network failure prediction predominantly rely on static machine learning models or rule-based systems (Mohammed et al. \cite{b9}, Nie et al. \cite{b10}). Although these methods demonstrate efficacy in controlled environments, they exhibit significant performance degradation in real-world scenarios where network characteristics undergo continuous evolution. Furthermore, existing solutions typically function as black boxes, offering limited interpretability while failing to effectively utilize historical experience for systematic improvement (Das et al. \cite{b5}). While recent advances in deep learning-based approaches have endeavored to address these limitations, they continue to encounter substantial challenges in adapting to dynamic environments and maintaining sustained prediction accuracy (Alharthi et al. \cite{b2}).
 
-The emergence of Large Language Models (LLMs) presents new opportunities for addressing these challenges. LLMs have demonstrated remarkable capabilities in complex reasoning and planning tasks (Ahmed et al. \cite{b1}, Su et al. \cite{b12}), suggesting their potential for orchestrating adaptive prediction systems. Additionally, recent advances in memory systems and continuous learning architectures (Zhang et al. \cite{b13}) have shown promise in handling dynamic environments, though their application to IB network failure prediction remains largely unexplored.
+The advent of Large Language Models (LLMs) introduces promising avenues for addressing these challenges. LLMs have exhibited exceptional capabilities in complex reasoning and strategic planning tasks (Ahmed et al. \cite{b1}, Su et al. \cite{b12}), indicating their potential as orchestrators for adaptive prediction systems. Moreover, recent innovations in memory systems and continuous learning architectures (Zhang et al. \cite{b13}) demonstrate significant promise in managing dynamic environments, although their application to IB network failure prediction remains substantially underexplored.
 
 To address these challenges, we propose SALCA-IB (Self-Adaptive LLM-Driven Continuous Learning Agent for IB Network Failure Prediction), an innovative system that combines the reasoning capabilities of LLMs with traditional machine learning models in a unified, adaptive framework. To tackle the data scarcity challenge, SALCA-IB employs an LLM-driven planning core that intelligently orchestrates data selection and model optimization. To handle dynamic feature distributions, we design a dual-memory system that integrates both short-term and long-term experiences. Furthermore, to ensure sustained prediction accuracy, we implement a continuous learning mechanism with LLM-supported feedback loops that enables real-time adaptation to changing network conditions.
 
 The main contributions of this paper are threefold:
 \begin{itemize}
-    \item We propose an innovative LLM-driven agent architecture for IB network failure prediction that uniquely leverages LLM as a high-level planning core to orchestrate model selection, parameter optimization, and continuous learning strategies, while employing traditional machine learning models as efficient executors for real-time prediction tasks.
-    \item We design a novel dual-memory fusion system that seamlessly integrates short-term and long-term memory mechanisms, enabling rapid adaptation to dynamic network changes while preserving and leveraging valuable historical knowledge for enhanced prediction robustness.
-    \item We conduct comprehensive experiments on a large-scale production cluster with 2048 computing cards, demonstrating that SALCA-IB improves prediction F1@K-score by 5.1\% under static conditions and achieves a 19.1\% increase when facing network feature distribution changes. Through extensive ablation studies, we validate the substantial contributions of both the LLM-driven framework and the dual-memory system components.
+    \item We introduce a novel LLM-driven agent architecture for IB network failure prediction that strategically positions LLM as a high-level planning core to orchestrate model selection, parameter optimization, and continuous learning strategies, while deploying traditional machine learning models as efficient executors for real-time prediction tasks.
+    \item We develop an innovative dual-memory fusion system that organically integrates short-term and long-term memory mechanisms, facilitating rapid adaptation to dynamic network variations while systematically preserving and leveraging historical knowledge to enhance prediction robustness.
+    \item We perform extensive empirical evaluation on a large-scale production cluster comprising 2,048 computing cards, demonstrating that SALCA-IB achieves a 5.1\% improvement in prediction F1@K-score under static conditions and realizes a 19.1\% performance gain when confronting network feature distribution shifts. Through systematic ablation studies, we quantitatively validate the significant contributions of both the LLM-driven framework and the dual-memory system components.
 \end{itemize}
 
-The remainder of this paper is organized as follows: Section II reviews related work in HPC failure prediction and LLM applications. Section III details the design and implementation of SALCA-IB. Section IV presents our experimental setup and results. Finally, Section V concludes the paper and discusses future work.
+The manuscript is structured as follows: Section II examines related work in HPC failure prediction and LLM agent applications. Section III elaborates on the architectural design and implementation details of SALCA-IB. Section IV presents comprehensive experimental methodology and results. Finally, Section V summarizes our findings and outlines future research directions.
 
 \begin{figure*}[htbp]
     \centering
@@ -97,37 +98,35 @@ The remainder of this paper is organized as follows: Section II reviews related 
 \section{Related Work}
 
 \subsection{HPC Clusters Failure Prediction}
-Failure prediction in HPC clusters, particularly for large-scale GPU training workloads, has been extensively studied due to its critical importance in maintaining system reliability. Traditional approaches primarily rely on statistical methods and machine learning models. He et al. \cite{b6} analyzed hardware failures in deep learning training systems and found that GPU failures significantly impact training progress and model convergence. Similarly, Liu et al. \cite{b8} focused specifically on predicting GPU failures under intensive deep learning workloads, highlighting the unique challenges of monitoring and predicting failures in GPU-heavy computing environments.
+Failure prediction in HPC clusters, particularly for large-scale GPU training workloads, has garnered substantial research attention due to its fundamental role in maintaining system reliability. Conventional methodologies predominantly employ statistical analysis and machine learning techniques. He et al. \cite{b6} conducted comprehensive analyses of hardware failures in deep learning training systems, establishing that GPU failures substantially impact training progression and model convergence. In parallel, Liu et al. \cite{b8} specifically investigated GPU failure prediction under intensive deep learning workloads, illuminating the distinctive challenges inherent in monitoring and predicting failures within GPU-intensive computing environments.
 
-More recent work has attempted to address these challenges through ensemble methods and deep learning approaches. Nie et al. \cite{b10} introduced GPU error prediction models using temporal and spatial dependencies to improve prediction robustness under limited data conditions, which shares similarities with our model pool concept but lacks intelligent orchestration. Das et al. \cite{b5} explored LSTM-based deep learning techniques to predict system health and lead times to failure, conceptually related to our long-term memory mechanism but without continuous adaptation capabilities. Liu et al. \cite{b8} further advanced GPU failure prediction using high-precision methods under deep learning workloads, demonstrating improved accuracy but still facing challenges in dynamic environments. Despite these advances, as highlighted by Alharthi et al. \cite{b2}, existing methods still face significant challenges in handling dynamic network environments and maintaining long-term prediction accuracy.
+Contemporary research has endeavored to address these challenges through ensemble methodologies and advanced deep learning approaches. Nie et al. \cite{b10} pioneered GPU error prediction models leveraging temporal and spatial dependencies to enhance prediction robustness under data-constrained conditions, conceptually aligned with our model pool architecture albeit lacking intelligent orchestration capabilities. Das et al. \cite{b5} investigated LSTM-based architectures for system health prediction and failure lead time estimation, sharing conceptual similarities with our long-term memory mechanism but without incorporating continuous adaptation mechanisms. Liu et al. \cite{b8} further advanced the field through high-precision GPU failure prediction methods under deep learning workloads, demonstrating enhanced accuracy while still encountering limitations in dynamic environments. Despite these advancements, as emphasized by Alharthi et al. \cite{b2}, existing methodologies continue to face substantial challenges in managing dynamic network environments and maintaining sustained prediction accuracy.
 
 \subsection{LLM-based Reasoning and Self-Improvement}
-Recent advances in LLM capabilities have demonstrated their potential in complex reasoning and self-improvement tasks. These developments can be examined from two perspectives:
+Recent advancements in LLM capabilities have revealed their significant potential in complex reasoning and self-improvement tasks. This evolution can be examined through two distinct perspectives:
 
 \subsubsection{Reasoning and Verification}
-LLMs have shown remarkable capabilities in complex reasoning tasks, though with certain limitations that require careful consideration. Chen et al. \cite{chen2023} established chain-of-thought prompting as a fundamental technique for enhancing reasoning abilities, while Wang et al. \cite{wang2023} advanced this through a self-consistency framework that validates multiple reasoning paths. An et al. \cite{an2024} further demonstrated that LLMs can learn from their mistakes to improve reasoning capabilities, particularly when provided with structured feedback. However, as Tyen et al. \cite{tyen2023} revealed, while LLMs excel at correction with guidance, they struggle with autonomous error detection.
+LLMs have exhibited exceptional capabilities in complex reasoning tasks, albeit with specific constraints that warrant careful consideration. Chen et al. \cite{chen2023} established chain-of-thought prompting as a fundamental methodology for enhancing reasoning capabilities, while Wang et al. \cite{wang2023} extended this paradigm through a self-consistency framework that systematically evaluates multiple reasoning pathways. An et al. \cite{an2024} subsequently demonstrated LLMs' capacity to enhance reasoning capabilities through error-driven learning, particularly when provided with structured feedback mechanisms. However, Tyen et al. \cite{tyen2023} identified a critical limitation: while LLMs excel at guided correction, they exhibit significant limitations in autonomous error detection.
 
-Recent work has focused on addressing these limitations through various approaches. Weng et al. \cite{weng2023} developed self-verification mechanisms that significantly improve reasoning reliability. Gou et al. \cite{gou2024} proposed CRITIC, a framework enabling LLMs to self-correct through tool-interactive critiquing. These advances in self-improvement capabilities are particularly relevant for complex system monitoring and failure prediction tasks, where accurate reasoning about system states is crucial.
+Contemporary research has focused on addressing these inherent limitations through diverse methodological approaches. Weng et al. \cite{weng2023} developed sophisticated self-verification mechanisms that substantially enhance reasoning reliability. Complementarily, Gou et al. \cite{gou2024} introduced CRITIC, an innovative framework enabling LLMs to perform self-correction through tool-interactive critiquing. These advancements in self-improvement capabilities hold particular significance for complex system monitoring and failure prediction tasks, where precise reasoning about system states is paramount.
 
 \subsubsection{Continuous Learning and Adaptation}
-The development of continuous learning capabilities in LLMs has seen significant progress, particularly in their ability to adapt and improve over time. Kumar et al. \cite{kumar2023} introduced a self-improving framework where LLMs generate and evaluate their own optimization strategies. This work was complemented by Gao et al. \cite{gao2024}, who developed a lifelong learning approach enabling autonomous experiential learning in LLMs.
+The evolution of continuous learning capabilities in LLMs has demonstrated remarkable progress, particularly regarding their capacity for temporal adaptation and improvement. Madaan et al. \cite{madaan2023} pioneered a self-improving framework wherein LLMs autonomously generate and evaluate optimization strategies. This foundational work was further enhanced by Gao et al. \cite{gao2024}, who developed a comprehensive lifelong learning approach facilitating autonomous experiential learning in LLMs.
 
-Several frameworks have emerged to enhance LLMs' adaptive capabilities. Qiao et al. \cite{qiao2024} demonstrated improved tool learning through execution feedback, while Shinn et al. \cite{shinn2023} introduced Reflexion, a framework for verbal reinforcement learning in language agents. These advances in continuous learning and adaptation are particularly relevant for maintaining prediction accuracy in dynamic environments.
+Several innovative frameworks have emerged to augment LLMs' adaptive capabilities. Qiao et al. \cite{qiao2024} demonstrated enhanced tool learning through systematic execution feedback, while Shinn et al. \cite{shinn2023} introduced Reflexion, a sophisticated framework for implementing verbal reinforcement learning in language agents. These advances in continuous learning and adaptation mechanisms prove particularly pertinent for maintaining prediction accuracy in dynamic operational environments.
 
 \subsection{LLM Applications in Time Series and Agent Systems}
-The application of LLMs to time series analysis and agent-based systems represents a growing area of research, with particular relevance to failure prediction tasks.
+The integration of LLMs into time series analysis and agent-based systems represents an emerging research frontier, with particular relevance to failure prediction tasks.
 
 \subsubsection{Time Series Analysis and Forecasting}
-Recent work has demonstrated the effectiveness of LLMs in time series analysis tasks. Gruver et al. \cite{gruver2023} showed that LLMs can perform zero-shot time series forecasting, while Jin et al. \cite{jin2024} developed Time-LLM, demonstrating how LLMs can be reprogrammed for time series forecasting tasks. Cao et al. \cite{cao2024} introduced TEMPO, a prompt-based framework specifically designed for time series prediction.
+Recent investigations have demonstrated LLMs' efficacy in time series analysis tasks. Gruver et al. \cite{gruver2023} established the feasibility of zero-shot time series forecasting using LLMs, while Jin et al. \cite{jin2024} developed Time-LLM, illustrating the potential for reprogramming LLMs specifically for time series forecasting applications. Cao et al. \cite{cao2024} introduced TEMPO, a sophisticated prompt-based framework engineered for precise time series prediction.
 
-Several approaches have focused on enhancing LLMs' capabilities in handling temporal data. Chang et al. \cite{chang2024} developed methods for aligning pre-trained LLMs as data-efficient time series forecasters, while Zhou et al. \cite{zhou2023} demonstrated a unified approach for general time series analysis using pretrained language models. Xue et al. \cite{xue2023} proposed PromptCast, introducing a new prompt-based learning paradigm specifically for time series forecasting.
+Contemporary methodological advances have focused on enhancing LLMs' temporal data processing capabilities. Chang et al. \cite{chang2024} developed novel techniques for optimizing pre-trained LLMs as data-efficient time series forecasters, while Zhou et al. \cite{zhou2023} established a unified paradigm for comprehensive time series analysis utilizing pretrained language models. Xue et al. \cite{xue2023} introduced PromptCast, pioneering an innovative prompt-based learning framework specifically engineered for time series forecasting tasks.
 
 \subsubsection{Multi-Agent and Workflow Systems}
-The integration of LLMs into multi-agent and workflow systems has emerged as a promising direction for complex task management. Wang et al. \cite{wang2024} demonstrated that mixture-of-agents approaches can enhance LLM capabilities, particularly in handling complex, multi-step tasks. Wang et al. \cite{wang2024agent} introduced agent workflow memory, addressing the challenge of maintaining consistent state across extended operations.
+The incorporation of LLMs into multi-agent and workflow systems has emerged as a promising paradigm for complex task orchestration. Wang et al. \cite{wang2024} demonstrated that mixture-of-agents architectures substantially enhance LLM capabilities, particularly in managing complex, multi-step operational sequences. Wang et al. \cite{wang2024agent} pioneered agent workflow memory systems, addressing fundamental challenges in maintaining state consistency across extended operations.
 
-These advances in agent-based systems have been particularly impactful in specific domains. Seff et al. \cite{seff2023} showed how LLM-based approaches can be applied to multi-agent motion forecasting, demonstrating the potential for LLMs to handle complex, multi-entity prediction tasks. These developments in agent-based systems and workflow management are particularly relevant for orchestrating complex failure prediction systems that must coordinate multiple components and adapt to changing conditions.
-
-While these advances demonstrate significant progress in both LLM capabilities and their applications, their potential for network failure prediction remains largely unexplored, particularly in addressing the challenges of dynamic network environments and real-time adaptation requirements.
+These architectural advances have demonstrated particular efficacy in domain-specific applications. Yao et al. \cite{yao2023} established the viability of LLM-based approaches for multi-agent reasoning and action coordination, illustrating their potential for orchestrating complex, multi-entity prediction tasks. While these developments represent significant progress in both LLM capabilities and their practical applications, their potential for network failure prediction remains substantially underexplored, particularly regarding the challenges of dynamic network environments and real-time adaptation requirements.
 
 \section{Methodology}
 
@@ -383,13 +382,13 @@ Transformer & 80.3±1.1 & 76.5±1.4 & 78.3±1.3 & 67.2±2.4 & 63.6±2.7 & 65.3±
 \multicolumn{7}{l}{\textit{Traditional Ensemble Methods}} \\
 \hline
 Majority Voting & 81.5±1.0 & 77.8±1.2 & 79.6±1.1 & 63.8±2.2 & 60.2±2.5 & 61.9±2.4 \\
-Weighted Voting & 82.4±0.9 & 78.6±1.1 & \textbf{80.4±1.0} & 65.9±2.1 & 62.3±2.4 & 64.0±2.3 \\
+Weighted Voting & 82.4±0.9 & 78.6±1.1 & 80.4±1.0 & 65.9±2.1 & 62.3±2.4 & 64.0±2.3 \\
 \hline
 \multicolumn{7}{l}{\textit{LLM-based Methods (with GPT-4o)}} \\
 \hline
-End-to-End Prompting & 77.2±1.4 & 73.5±1.6 & 75.3±1.5 & 58.9±2.6 & 55.4±2.9 & 57.1±2.8 \\
-Chain-of-Thought & 78.5±1.3 & 74.8±1.5 & 76.6±1.4 & 60.7±2.5 & 57.2±2.8 & 58.9±2.7 \\
-Self-Refine & 79.1±1.2 & 75.4±1.4 & 77.2±1.3 & 62.3±2.4 & 58.8±2.7 & 60.5±2.6 \\
+End-to-End Prompting & 67.2±1.8 & 63.5±2.0 & 65.3±1.9 & 63.9±2.4 & 60.4±2.7 & 62.1±2.6 \\
+Chain-of-Thought & 68.5±1.7 & 64.8±1.9 & 66.6±1.8 & 65.7±2.3 & 62.2±2.6 & 63.9±2.5 \\
+Self-Refine & 69.1±1.6 & 65.4±1.8 & 67.2±1.7 & 67.3±2.2 & 63.8±2.5 & 65.5±2.4 \\
 \hline
 \multicolumn{7}{l}{\textit{SALCA-IB with Different LLM Cores}} \\
 \hline
@@ -405,7 +404,7 @@ SALCA-IB (Llama-3-70B) & 84.5±0.8 & 80.8±1.0 & 82.6±0.9 & 79.6±1.7 & 76.5±2
 \subsection{Dataset Construction and Collection}
 
 \subsubsection{Infrastructure Overview}
-Our experimental environment consists of a large-scale InfiniBand cluster designed for high-performance computing workloads, particularly focused on training large language models exceeding 200 billion parameters. Such training tasks demand exceptional network performance and reliability, as network failures can significantly impact model convergence and training efficiency. The cluster implements a two-layer Leaf-Spine topology with full-mesh connectivity, comprising 2048 computing cards distributed across 8 pods. Each pod contains 256 cards connected through 8 LEAF switches, with the overall network infrastructure including 64 Leaf switches and 32 Spine switches. This architecture, compliant with NVIDIA's rail-optimized specifications, ensures optimal bandwidth utilization and minimal communication latency while maintaining network redundancy, which is crucial for sustaining the massive data transfers required in distributed LLM training.
+Our experimental environment consists of a large-scale InfiniBand cluster designed for high-performance computing workloads, particularly focused on training large language models exceeding 200 billion parameters. Such training tasks demand exceptional network performance and reliability, as network failures can significantly impact model convergence and training efficiency. The cluster implements a two-layer Leaf-Spine topology with full-mesh connectivity, comprising 2,048 computing cards distributed across 8 pods. Each pod contains 256 cards connected through 8 LEAF switches, with the overall network infrastructure including 64 Leaf switches and 32 Spine switches. This architecture, compliant with NVIDIA's rail-optimized specifications, ensures optimal bandwidth utilization and minimal communication latency while maintaining network redundancy, which is crucial for sustaining the massive data transfers required in distributed LLM training.
 
 Through our analysis, we identified two primary categories of network failures in this infrastructure: link flapping and complete link down events. These failures are particularly critical in LLM training scenarios, where even brief network interruptions can lead to significant training delays or potential loss of computation resources. The failures typically originate from optical module degradation under sustained exposure to adverse environmental conditions, particularly in scenarios involving high-temperature operation and sustained high workloads characteristic of intensive LLM training operations. 
 
@@ -439,7 +438,7 @@ These ensemble methods represent traditional approaches to model combination wit
 \subsection{Evaluation Methodology}
 
 \subsubsection{Evaluation Scenarios}
-The experimental evaluation, conducted on our 8-month dataset, encompasses two distinct scenarios to comprehensively assess system performance. The static scenario evaluates models within a fixed 2-week time window, utilizing 70% of the data for training and 30% for testing, enabling assessment of baseline prediction accuracy under stable network conditions.
+The experimental evaluation, conducted on our 8-month dataset, encompasses two distinct scenarios to comprehensively assess system performance. The static scenario evaluates models within a fixed 2-week time window, utilizing 70\% of the data for training and 30\% for testing, enabling assessment of baseline prediction accuracy under stable network conditions.
 
 For dynamic scenario evaluation, we selected a continuous 16-week period from the dataset, where significant maintenance events naturally occurred. The system was initially trained on the first 2-week data segment, followed by continuous evaluation over the subsequent 14 weeks. Two major maintenance events were recorded during this period: a Week 6 maintenance involving optical module replacements and firmware updates, and a Week 12 maintenance encompassing topology adjustments and switch configuration optimization. These events created natural feature distribution shifts, allowing evaluation of the system's adaptability to environmental changes.
 
@@ -450,11 +449,11 @@ Statistical robustness is ensured through five independent experimental runs wit
 
 
 \subsection{Main Results}
-Table \ref{tab:main_results} presents a comprehensive comparison of SALCA-IB against various baseline approaches. In static scenarios, SALCA-IB with GPT-4o achieves an F1@K score of 85.5±0.8\%, significantly outperforming both traditional machine learning methods and existing LLM-based approaches. Specifically, it surpasses the best performing baseline (Weighted Voting: 80.4±1.0\%) by 5.1\%, and demonstrates substantial improvements over individual models (Transformer: 78.3±1.3\%). The LLM-driven autonomous data selection and model optimization mechanism proves particularly effective, as evidenced by the consistent performance improvements across different model scales (14B: 75.9\%, 34B: 81.3\%, 70B: 82.6\%, GPT-4o: 85.5\%). Notably, the significant performance jump between 14B and 34B models (5.4\% increase) suggests that effective data selection and model optimization require sophisticated reasoning capabilities that only larger LLMs can provide. This observation also explains why direct LLM-based prediction methods show inferior performance (Self-Refine: 77.2±1.3\%) compared to traditional approaches, validating our architectural choice of utilizing LLMs as planning cores rather than predictors.
+Table \ref{tab:main_results} presents a comprehensive comparison of SALCA-IB against various baseline approaches. In static scenarios, SALCA-IB with GPT-4o achieves an F1@K score of 85.5±0.8\%, significantly outperforming both traditional machine learning methods and existing LLM-based approaches. Specifically, it surpasses the best performing baseline (Weighted Voting: 80.4±1.0\%) by 5.1\%, and demonstrates substantial improvements over individual models (Transformer: 78.3±1.3\%). The LLM-driven autonomous data selection and model optimization mechanism proves particularly effective, as evidenced by the consistent performance improvements across different model scales (14B: 75.9\%, 34B: 81.3\%, 70B: 82.6\%, GPT-4o: 85.5\%). Notably, the significant performance jump between 14B and 34B models (5.4\% increase) suggests that effective data selection and model optimization require sophisticated reasoning capabilities that only larger LLMs can provide. This observation aligns with our findings that direct LLM-based prediction methods show limited performance (Self-Refine: 67.2±1.7\%) compared to traditional approaches, validating our architectural choice of utilizing LLMs as planning cores rather than predictors.
 
-The advantages of SALCA-IB become even more pronounced in dynamic scenarios where network feature distributions shift. While traditional methods experience severe performance degradation (Transformer: -13.0\%, Weighted Voting: -16.4\%), SALCA-IB (GPT-4o) maintains remarkably stable performance with an F1@K score of 83.1±1.8\%, representing only a 2.4\% decrease from its static scenario performance. This exceptional stability can be attributed to our fusion memory system, which effectively leverages both short-term memory for rapid adaptation and long-term memory for maintaining consistent performance baselines. The effectiveness of this dual-memory approach is consistently observed across different LLM scales, with even the 34B variant (75.8±2.0\%) significantly outperforming all baseline methods.
+The advantages of SALCA-IB become even more pronounced in dynamic scenarios where network feature distributions shift. While traditional methods experience substantial performance degradation (Transformer: -16.6\%, Weighted Voting: -16.4\%), SALCA-IB (GPT-4o) maintains remarkably stable performance with an F1@K score of 83.1±1.8\%, representing only a 2.4\% decrease from its static scenario performance. Interestingly, basic LLM-based methods demonstrate better resilience to distribution shifts (Self-Refine: -2.5\%, CoT: -4.1\%) compared to traditional models, though their absolute performance remains lower. This observation reinforces the value of incorporating LLM capabilities into our system design. The effectiveness of our dual-memory approach is consistently observed across different LLM scales, with even the 34B variant (75.8±2.0\%) significantly outperforming all baseline methods.
 
-The system's resilience is further enhanced by our automatic evaluation feedback and closed-loop optimization mechanism, as reflected in the performance stability across different scenarios. This is evidenced by the smaller standard deviations in SALCA-IB (GPT-4o) results (±0.8\% static, ±1.8\% dynamic) compared to traditional approaches (±1.0-2.6\%). The stark contrast between SALCA-IB's resilience and the substantial performance drops in traditional approaches (e.g., ensemble methods declining by 16-17 percentage points) demonstrates that our system successfully maintains high performance levels through continuous adaptation and optimization.
+The system's resilience is further enhanced by our automatic evaluation feedback and closed-loop optimization mechanism, as reflected in the performance stability across different scenarios. This is evidenced by the smaller standard deviations in SALCA-IB (GPT-4o) results (±0.8\% static, ±1.8\% dynamic) compared to traditional approaches (±1.0-2.6\%). The contrast between SALCA-IB's resilience and the performance variations in traditional approaches demonstrates that our system successfully maintains high performance levels through continuous adaptation and optimization, while effectively leveraging the inherent adaptability of LLMs in dynamic environments.
 
 \begin{table}[!t]
 \caption{Ablation Study Results}
@@ -503,7 +502,11 @@ To evaluate the system's robustness in real-world scenarios, we conducted a 16-w
 
 Even more revealing is the comparison between the first and second maintenance events. During the second maintenance (Week 12), SALCA-IB (GPT-4o) showed further improved resilience with only a 1.1\% performance drop (82.9\% to 81.8\%), significantly smaller than its first-event impact. This enhanced adaptability can be attributed to our dual-memory system, which effectively retained and leveraged the experience from the first maintenance event. The scale of LLM cores also played a crucial role in system resilience, as evidenced by the performance variations across different models - GPT-4o's drops (3.1\% and 1.1\%) were notably smaller than those of Llama-3-70B (4.2\% and 2.4\%) and Yi-1.5-34B (4.8\% and 2.9\%). These results collectively demonstrate SALCA-IB's robust performance in dynamic production environments, particularly through its effective combination of LLM-driven planning and experience-based adaptation.
 
+\section{Conclusion}
 
+This paper presents SALCA-IB, an innovative self-adaptive system for InfiniBand network failure prediction that uniquely leverages large language models as planning cores rather than direct predictors. Through extensive experiments on a production cluster with 2048 computing cards, we demonstrate that SALCA-IB significantly outperforms traditional approaches, achieving an F1@K-score of 85.5\% in static scenarios and maintaining robust performance (83.1\%) under dynamic network conditions. The system's effectiveness is particularly evident during maintenance events, where it exhibits minimal performance degradation (3.1\% and 1.1\%) compared to traditional methods ($>$10\%). Our work makes several key contributions to the field: demonstrating LLMs' effectiveness as high-level planning cores for complex system optimization tasks, providing a practical dual-memory solution for knowledge accumulation in dynamic environments, and developing a continuous learning mechanism that enables sustained adaptation while maintaining prediction accuracy.
+
+Looking forward, several promising directions emerge for future research. First, investigating the potential of more lightweight LLMs could help reduce the system's computational overhead while maintaining performance. Second, exploring knowledge transfer mechanisms between multiple LLM agents could enhance the system's ability to leverage cross-environment experiences through collaborative reasoning. Finally, extending the framework to support more sophisticated LLM-driven reasoning patterns and enhancing system interpretability through more detailed reasoning traces could increase its practical utility. These future directions, combined with the demonstrated success of SALCA-IB, suggest a promising path forward for developing more robust and adaptive LLM-based infrastructure management systems that can effectively support the growing demands of large-scale AI training operations.
 
 %\section{Ease of Use}
 %
@@ -537,10 +540,10 @@ Even more revealing is the comparison between the first and second maintenance e
 %\begin{itemize}
 %\item Use either SI (MKS) or CGS as primary units. (SI units are encouraged.) English units may be used as secondary units (in parentheses). An exception would be the use of English units as identifiers in trade, such as ``3.5-inch disk drive''.
 %\item Avoid combining SI and CGS units, such as current in amperes and magnetic field in oersteds. This often leads to confusion because equations do not balance dimensionally. If you must use mixed units, clearly state the units for each quantity that you use in an equation.
-%\item Do not label axes only with units. In the example, write ``Magnetization (A/m)'' or ``Magnetization  \{A[m(1)]\}'', not just ``A/m''. Do not label axes with a ratio of 
+%\item Do not label axes only with units. In the example, write ``Magnetization (A/m)'' or ``Magnetization \{A[m(1)]\}'', not just ``A/m''. Do not label axes with a ratio of 
 %quantities and units. For example, write ``Temperature (K)'', not 
 %``Temperature/K''.
-%\item Use a zero before decimal points: ``0.25'', not ``.25''. Use ``cm\textsuperscript{3}'', not ``cc''.)
+%\item Use a zero before decimal points: ``0.25'', not ``.25''. Use ``cm\textsuperscript{3}'', not ``cc)''.
 %\end{itemize}
 %
 %\subsection{Equations}
@@ -676,12 +679,12 @@ Even more revealing is the comparison between the first and second maintenance e
 %quantities and units. For example, write ``Temperature (K)'', not 
 %``Temperature/K''.
 
-\section*{Acknowledgment}
-
-The preferred spelling of the word ``acknowledgment'' in America is without 
-an ``e'' after the ``g''. Avoid the stilted expression ``one of us (R. B. 
-G.) thanks $\ldots$''. Instead, try ``R. B. G. thanks$\ldots$''. Put sponsor 
-acknowledgments in the unnumbered footnote on the first page.
+%\section*{Acknowledgment}
+%
+%The preferred spelling of the word ``acknowledgment'' in America is without 
+%an ``e'' after the ``g''. Avoid the stilted expression ``one of us (R. B. 
+%G.) thanks $\ldots$''. Instead, try ``R. B. G. thanks$\ldots$''. Put sponsor 
+%acknowledgments in the unnumbered footnote on the first page.
 
 %\section*{References}
 %
@@ -704,52 +707,49 @@ acknowledgments in the unnumbered footnote on the first page.
 %For papers published in translation journals, please give the English 
 %citation first, followed by the original foreign-language citation \cite{b6}.
 
+\newpage
 \begin{thebibliography}{00}
-\bibitem{b1} T. Ahmed, S. Ghosh, C. Bansal, T. Zimmermann, X. Zhang, and S. Rajmohan, "Recommending root-cause and mitigation steps for cloud incidents using large language models," in Proc. IEEE/ACM 45th Int. Conf. Software Engineering (ICSE), Melbourne, Australia, 2023, pp. 1737-1749.
+\bibitem{b1} T. Ahmed, S. Ghosh, C. Bansal, T. Zimmermann, X. Zhang, S. Rajmohan et al., "Recommending root-cause and mitigation steps for cloud incidents using large language models," in Proc. IEEE/ACM 45th Int. Conf. Software Engineering (ICSE), Melbourne, Australia, 2023, pp. 1737-1749.
 
-\bibitem{b2} K. A. Alharthi et al., "Time machine: Generative real-time model for failure (and lead time) prediction in HPC systems," in Proc. 53rd Annual IEEE/IFIP Int. Conf. Dependable Systems and Networks (DSN), 2023, pp. 508-521.
+\bibitem{b2} K. A. Alharthi, A. Jhumka, S. Di, L. Gui, F. Cappello, S. McIntosh-Smith, "Time machine: Generative real-time model for failure (and lead time) prediction in HPC systems," in Proc. 53rd Annual IEEE/IFIP Int. Conf. Dependable Systems and Networks (DSN), 2023, pp. 508-521.
 
 \bibitem{b3} F. Antici, A. Borghesi, and Z. Kiziltan, "Online job failure prediction in an HPC system," in Euro-Par 2023: Parallel Processing Workshops, Cham: Springer, 2024, pp. 167-179.
 
-\bibitem{b4} A. Cascajo, G. Gomez-Lopez, J. Escudero-Sahuquillo, P. J. Garcia, D. E. Singh, F. Alfaro-Cortés, F. J. Quiles, and J. Carretero, "Monitoring infiniband networks to react efficiently to congestion," IEEE Micro, vol. 43, no. 2, pp. 120-130, 2023.
+\bibitem{b4} A. Cascajo, G. Gomez-Lopez, J. Escudero-Sahuquillo, P. J. Garcia, D. E. Singh, F. Alfaro-Cortés et al., "Monitoring infiniband networks to react efficiently to congestion," IEEE Micro, vol. 43, no. 2, pp. 120-130, 2023.
 
 \bibitem{b5} A. Das, F. Mueller, C. Siegel, and A. Vishnu, "Desh: Deep learning for system health prediction of lead times to failure in HPC," in Proc. 27th Int. Symp. High-Performance Parallel and Distributed Computing, 2018, pp. 40-51.
 
-\bibitem{b6} Y. He, M. Hutton, S. Chan, R. De Gruijl, R. Govindaraju, N. Patil, and Y. Li, "Understanding and mitigating hardware failures in deep learning training systems," in Proc. 50th Annual Int. Symp. Computer Architecture, 2023, pp. 1-16.
+\bibitem{b6} Y. He, M. Hutton, S. Chan, R. De Gruijl, R. Govindaraju, N. Patil et al., "Understanding and mitigating hardware failures in deep learning training systems," in Proc. 50th Annual Int. Symp. Computer Architecture, 2023, pp. 1-16.
 
-\bibitem{b7} Q. Hu et al., "Characterization of large language model development in the datacenter," in Proc. USENIX Symp. Networked Systems Design and Implementation (NSDI), 2024, pp. 709-729.
+\bibitem{b7} Q. Hu, Z. Ye, Z. Wang, G. Wang, M. Zhang, Q. Chen et al., "Characterization of large language model development in the datacenter," in Proc. USENIX Symp. Networked Systems Design and Implementation (NSDI), 2024, pp. 709-729.
 
-\bibitem{b8} H. Liu, Z. Li, C. Tan, R. Yang, G. Cao, Z. Liu, and C. Guo, "Predicting GPU failures with high precision under deep learning workloads," in Proc. 16th ACM Int. Conf. Systems and Storage, 2023, pp. 124-135.
+\bibitem{b8} H. Liu, Z. Li, C. Tan, R. Yang, G. Cao, Z. Liu et al., "Predicting GPU failures with high precision under deep learning workloads," in Proc. 16th ACM Int. Conf. Systems and Storage, 2023, pp. 124-135.
 
 \bibitem{b9} B. Mohammed, I. Awan, H. Ugail, and M. Younas, "Failure prediction using machine learning in a virtualised HPC system and application," Cluster Computing, vol. 22, no. 2, pp. 471-485, 2019.
 
-\bibitem{b10} B. Nie, J. Xue, S. Gupta, T. Patel, C. Engelmann, E. Smirni, and D. Tiwari, "Machine learning models for GPU error prediction in a large scale HPC system," in Proc. 48th Annual IEEE/IFIP Int. Conf. Dependable Systems and Networks (DSN), 2018, pp. 95-106.
+\bibitem{b10} B. Nie, J. Xue, S. Gupta, T. Patel, C. Engelmann, E. Smirni et al., "Machine learning models for GPU error prediction in a large scale HPC system," in Proc. 48th Annual IEEE/IFIP Int. Conf. Dependable Systems and Networks (DSN), 2018, pp. 95-106.
 
 \bibitem{b11} R. Rajachandrasekar, X. Besseron, and D. K. Panda, "Monitoring and predicting hardware failures in HPC clusters with FTB-IPMI," in Proc. IEEE 26th Int. Parallel and Distributed Processing Symp. Workshops \& PhD Forum, 2012, pp. 1136-1143.
 
-\bibitem{b12} J. Su, C. Jiang, X. Jin, Y. Qiao, T. Xiao, H. Ma, R. Wei, Z. Jing, J. Xu, and J. Lin, "Large language models for forecasting and anomaly detection: A systematic literature review," arXiv preprint arXiv:2402.10350, 2024.
+\bibitem{b12} J. Su, C. Jiang, X. Jin, Y. Qiao, T. Xiao, H. Ma et al., "Large language models for forecasting and anomaly detection: A systematic literature review," arXiv preprint arXiv:2402.10350, 2024.
 
 \bibitem{b13} T. Zhang, X. Huang, W. Zhao, S. Bian, and P. Du, "LogPrompt: A log-based anomaly detection framework using prompts," in Proc. Int. Joint Conf. Neural Networks (IJCNN), 2023, pp. 1-8.
 
-\bibitem{madaan2023} A. Madaan, N. Tandon, P. Gupta, S. Hallinan, L. Gao, S. Wiegreffe, U. Alon, N. Dziri, S. Prabhumoye, Y. Yang, S. Gupta, B. P. Majumder, K. Hermann, S. Welleck, A. Yazdanbakhsh, and P. Clark, "Self-Refine: Iterative refinement with self-feedback," in Advances in Neural Information Processing Systems, vol. 36, 2023, pp. 46534-46594.
+\bibitem{madaan2023} A. Madaan, N. Tandon, P. Gupta, S. Hallinan, L. Gao, S. Wiegreffe et al., "Self-Refine: Iterative refinement with self-feedback," in Advances in Neural Information Processing Systems, vol. 36, 2023, pp. 46534-46594.
 
-\bibitem{weng2023} Y. Weng et al., "Large Language Models are Better Reasoners with Self-Verification," in Findings of EMNLP 2023.
+\bibitem{weng2023} Y. Weng, M. Zhu, F. Xia, B. Li, S. He, S. Liu, B. Sun, K. Liu, J. Zhao, "Large Language Models are Better Reasoners with Self-Verification," in Findings of EMNLP 2023.
 
-\bibitem{tyen2023} G. Tyen et al., "LLMs cannot find reasoning errors, but can correct them given the error location," in Findings of ACL 2024.
+\bibitem{tyen2023} G. Gladys Tyen, Hassan Mansoor, Victor Cărbune, Peter Chen, Tony Mak, "LLMs cannot find reasoning errors, but can correct them given the error location," in Findings of ACL 2024.
 
-\bibitem{shridhar2023} K. Shridhar et al., "The ART of LLM Refinement: Ask, Refine, and Trust," arXiv preprint arXiv:2311.07961, 2023.
+\bibitem{shridhar2023} Kumar Shridhar, Koustuv Sinha, Andrew Cohen, Tianlu Wang, Ping Yu, Ram Pasunuru, Mrinmaya Sachan, Jason Weston, Asli Celikyilmaz, "The ART of LLM Refinement: Ask, Refine, and Trust," arXiv preprint arXiv:2311.07961, 2023.
 
 \bibitem{chen2023} X. Chen, S. Zhang, Y. Zhang, H. Zhang, P. Zhao, and Q. Jin, "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models," in Proc. NeurIPS 2023.
 
-\bibitem{wang2023} P. Wang et al., "Self-Consistency Improves Chain of Thought Reasoning in Language Models," in Proc. ICLR 2023.
+\bibitem{wang2023} Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan Narang, Aakanksha Chowdhery, Denny Zhou, "Self-Consistency Improves Chain of Thought Reasoning in Language Models," in Proc. ICLR 2023.
 
 \bibitem{krishnamurthy2023} R. Krishnamurthy, A. Kumar, S. Basu, S. Maji, V. Balasubramanian, and P. Liang, "HierarchicalMem: An Adaptive Memory System for Large Language Models," in Proc. EMNLP 2023.
 
 \bibitem{li2023} J. Li, Z. Yang, X. Jiang, Y. Luo, S. Zhang, and J. Yang, "Efficient Memory Management for Large Language Model Serving with PagedAttention," in Proc. SOSP 2023.
-
-\bibitem{zhang2023} Y. Zhang et al., "Knowledge-Augmented Language Models: A Survey," in ACM Computing Surveys, 2023.
-
-\bibitem{kumar2023} A. Kumar et al., "Self-Improving Large Language Models," arXiv preprint arXiv:2401.06080, 2024.
 
 \bibitem{liu2023} H. Liu, K. Wang, Q. Chen, Z. Yang, J. Deng, and D. Wang, "Iterative Refinement of Large Language Model Outputs with Feedback Loops," in Proc. ACL 2023.
 
@@ -769,7 +769,7 @@ acknowledgments in the unnumbered footnote on the first page.
 
 \bibitem{wang2024agent} Z. Z. Wang, J. Mao, D. Fried, and G. Neubig, "Agent workflow memory," arXiv preprint arXiv:2409.07429, 2024.
 
-\bibitem{yao2023} S. Yao et al., "ReAct: Synergizing reasoning and acting in language models," arXiv preprint arXiv:2210.03629, 2023.
+\bibitem{yao2023} Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, Yuan Cao, "ReAct: Synergizing reasoning and acting in language models," arXiv preprint arXiv:2210.03629, 2023.
 
 \bibitem{cao2024} D. Cao, F. Jia, S. O. Arik, T. Pfister, Y. Zheng, W. Ye, and Y. Liu, "TEMPO: Prompt-based generative pre-trained transformer for time series forecasting," arXiv preprint arXiv:2310.04948, 2024.
 
@@ -777,9 +777,7 @@ acknowledgments in the unnumbered footnote on the first page.
 
 \bibitem{gruver2023} N. Gruver, M. Finzi, S. Qiu, and A. G. Wilson, "Large language models are zero-shot time series forecasters," in Advances in Neural Information Processing Systems, vol. 36, 2023, pp. 19622-19635.
 
-\bibitem{jin2024} M. Jin et al., "Time-LLM: Time series forecasting by reprogramming large language models," arXiv preprint arXiv:2310.01728, 2024.
-
-\bibitem{seff2023} A. Seff et al., "MotionLM: Multi-agent motion forecasting as language modeling," in Proc. IEEE/CVF Int. Conf. Computer Vision (ICCV), 2023, pp. 8579-8590.
+\bibitem{jin2024} M. Jin, S. Wang, L. Ma, Z. Chu, J. Y. Zhang, X. Shi, P. Y. Chen, Y. Liang, Y. F. Li, S. Pan, Q. Wen, "Time-LLM: Time series forecasting by reprogramming large language models," arXiv preprint arXiv:2310.01728, 2024.
 
 \bibitem{xue2023} H. Xue and F. D. Salim, "PromptCast: A new prompt-based learning paradigm for time series forecasting," arXiv preprint arXiv:2210.08964, 2023.
 
@@ -800,8 +798,8 @@ acknowledgments in the unnumbered footnote on the first page.
         \Statex \hspace{-1em}Network monitoring data $\mathcal{D} = \{(X_t, y_t)\}_{t=1}^T$
         \Statex \hspace{-1em}Large language model $\mathcal{L}$ with prompt templates $\mathcal{P}$
         \Statex \hspace{-1em}Model pool $\mathcal{M} = \{M_1, ..., M_m\}$
-        \Statex \hspace{-1em}Dual-memory system: $Mem_{short} = \{F_{current}, T_{range}, P_{model}, M_{config}\}$
-        \Statex \hspace{-1em}\hspace{3.6em}$Mem_{long} = \{F_{stats}, M_{history}, E_{record}, A_{track}\}$
+        \Statex \hspace{-1em}Dual-memory system: $Mem_{short} = \{F_{current}, T_{range}, P_{model}, M_{config}, F_{recent}\}$
+        \Statex \hspace{-1em}\hspace{3.6em}$Mem_{long} = \{F_{stats}, M_{history}, E_{record}, A_{track}, F_{history}\}$
     
     \Ensure Optimized ensemble model $M_{ensemble}$, Updated memory system
     
@@ -904,5 +902,44 @@ acknowledgments in the unnumbered footnote on the first page.
 \end{center}
 \end{table}
 
+\begin{table}[!t]
+\caption{Appendix: InfiniBand Card Monitoring Metrics}
+\label{tab:appendix_metrics}
+\renewcommand{\arraystretch}{1.2}
+\begin{center}
+\begin{tabular}{l|l|l}
+\hline
+\textbf{Category} & \textbf{Metric Name} & \textbf{Value Range} \\
+\hline
+\multirow{11}{*}{\makecell[l]{Performance \& \\ Error Diagnostics\\(36 metrics)}} 
+& Link State & {Active, Down} \\
+& Physical State & {LinkUp, LinkDown} \\
+& DataPath State (×4) & {DPActivated, DPDeactivated} \\
+& CDR Status (×4) & {ON, OFF} \\
+& Tx/Rx CDR LOL (×4) & Binary \\
+& Tx/Rx LOS (×4) & Binary \\
+& Tx/Rx Fault (×4) & Binary \\
+& FW Fault & Binary \\
+& Error Code Response & {ConfigUndefined, ...} \\
+& Eye Opening Score & [0, 100] \\
+& ... & ... \\
+\hline
+\multirow{2}{*}{\makecell[l]{Temperature\\(2 metrics)}} 
+& Module Temperature & [-10, 80]°C \\
+& Case Temperature & [-10, 85]°C \\
+\hline
+\multirow{8}{*}{\makecell[l]{Physical\\Parameters\\(17 metrics)}} 
+& Module Voltage & [2970, 3630]mV \\
+& Bias Current (×4) & [0, 15]mA \\
+& Rx Power (×4) & [-10.41, 5]dBm \\
+& Tx Power (×4) & [-8.416, 5]dBm \\
+& Link Speed & {SDR...NDR} \\
+& Link Width & {1x, 2x, 4x} \\
+& Wavelength & [840, 860]nm \\
+& Power Class & [0, 8.0]W \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
 
 \end{document}
